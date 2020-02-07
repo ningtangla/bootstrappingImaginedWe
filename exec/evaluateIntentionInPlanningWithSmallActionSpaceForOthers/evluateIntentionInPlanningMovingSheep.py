@@ -16,7 +16,7 @@ import pathos.multiprocessing as mp
 import math 
 
 from src.MDPChasing.state import GetAgentPosFromState, GetStateForPolicyGivenIntention
-from src.MDPChasing.policies import RandomPolicy, PolicyOnChangableIntention, SoftPolicy, ResetPolicy
+from src.MDPChasing.policies import RandomPolicy, PolicyOnChangableIntention, SoftPolicy, RecordValuesForPolicyAttributes, ResetPolicy
 from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal
 from src.centralControl import AssignCentralControlToIndividual
 from src.trajectory import SampleTrajectory
@@ -24,52 +24,17 @@ from src.chooseFromDistribution import sampleFromDistribution, maxFromDistributi
 from src.trajectoriesSaveLoad import GetSavePath, readParametersFromDf, LoadTrajectories, SaveAllTrajectories, \
     GenerateAllSampleIndexSavePaths, saveToPickle, loadFromPickle
 from src.neuralNetwork.policyValueResNet import GenerateModel, ApproximatePolicy, restoreVariables
-from src.inference.inference import CalPolicyLikelihood, CalTransitionLikelihood, InferOneStep, InferOnTrajectory
+from src.inference.percept import SampleNoisyAction, MappingActionToAnotherSpace, PerceptImaginedWeAction
+from src.inference.inference import CalPolicyLikelihood, InferOneStep, InferOnTrajectory
 from src.evaluation import ComputeStatistics
 
-class TransitionLikelihoodFunction:
-    def __init__(self, selfIndex, otherIndex, otherActionSpace, transite):
-        self.selfIndex = selfIndex
-        self.otherIndex = otherIndex
-        self.otherActionSpace = otherActionSpace
-        self.transite = transite
-
-    def __call__(self, state, action, nextState):
-        hypothesisNextState = self.transite(state, action)
-        hypothesisSelfNextState, hypothesisOtherNextState = hypothesisNextState[self.selfIndex], hypothesisNextState[self.otherIndex] 
-        otherState = state[self.otherIndex]
-        possibleOtherNextStates = [self.transite(otherState, otherAction) for otherAction in self.otherActionSpace]
-        minDistanceOfPossibleOtherNextState = min([np.linalg.norm(np.array(possibleOtherNextState).flatten() - nextState[self.otherIndex])
-                for possibleOtherNextState in possibleOtherNextStates])
-        realDistanceOfOtherNextState = np.linalg.norm(hypothesisOtherNextState - nextState[self.otherIndex])
-        if np.allclose(hypothesisNextState[self.selfIndex], nextState[self.selfIndex]) and np.allclose(minDistanceOfPossibleOtherNextState, realDistanceOfOtherNextState):
-            return 1
-        else:
-            return 0
-
-class MeasureIntentionArcheivement:
-    def __init__(self, possibleIntentionIds, imaginedWeIds, stateIndex, posIndex, minDistance, judgeSuccessCatchOrEscape):
-        self.possibleIntentionIds = possibleIntentionIds
-        self.imaginedWeIds = imaginedWeIds
-        self.stateIndex = stateIndex
-        self.posIndex = posIndex
-        self.minDistance = minDistance
-        self.judgeSuccessCatchOrEscape = judgeSuccessCatchOrEscape
-
-    def __call__(self, trajectory):
-        lastState = np.array(trajectory[-1][self.stateIndex])
-        minL2DistancesBetweenImageinedWeAndIntention = [min([np.linalg.norm(lastState[subjectIndividualId][self.posIndex] - lastState[intentionIndividualId][self.posIndex]) 
-            for subjectIndividualId, intentionIndividualId in it.product(self.imaginedWeIds, intentionId)]) for intentionId in self.possibleIntentionIds]
-        areDistancesInMin = [distance <= self.minDistance for distance in minL2DistancesBetweenImageinedWeAndIntention]
-        successArcheivement = [self.judgeSuccessCatchOrEscape(booleanInMinDistance) for booleanInMinDistance in areDistancesInMin]
-        #successArcheivement = min(1, np.sum([self.judgeSuccessCatchOrEscape(booleanInMinDistance) for booleanInMinDistance in areDistancesInMin]))
-        return successArcheivement
 
 class SampleTrjactoriesForConditions:
-    def __init__(self, numTrajectories, composeIndividualPoliciesByEvaParameters, composeResetPolicy, composeSampleTrajectory, saveTrajectoryByParameters):
+    def __init__(self, numTrajectories, composeIndividualPoliciesByEvaParameters, composeResetPolicy, composeRecordActionForPolicy, composeSampleTrajectory, saveTrajectoryByParameters):
         self.numTrajectories = numTrajectories
         self.composeIndividualPoliciesByEvaParameters = composeIndividualPoliciesByEvaParameters
         self.composeResetPolicy = composeResetPolicy
+        self.composeRecordActionForPolicy = composeRecordActionForPolicy
         self.composeSampleTrajectory = composeSampleTrajectory
         self.saveTrajectoryByParameters = saveTrajectoryByParameters
 
@@ -79,10 +44,10 @@ class SampleTrjactoriesForConditions:
         maxRunningSteps = parameters['maxRunningSteps']
         individualPolicies = self.composeIndividualPoliciesByEvaParameters(numActionSpaceForOthers)
         resetPolicy = self.composeResetPolicy(individualPolicies)
-        sampleTrajectory = self.composeSampleTrajectory(maxRunningSteps, resetPolicy)
+        recordActionForPolicy = self.composeRecordActionForPolicy(individualPolicies)
+        sampleTrajectory = self.composeSampleTrajectory(maxRunningSteps, resetPolicy, recordActionForPolicy)
         policy = lambda state: [individualPolicy(state) for individualPolicy in individualPolicies]
-        trajectories = [sampleTrajectory(policy) for trjaectoryIndex in range(self.numTrajectories)]       
-        self.saveTrajectoryByParameters(trajectories, parameters)
+        trajectories = [sampleTrajectory(policy) for trjaectoryIndex in range(self.numTrajectories)]
 
 def main():
     # manipulated variables
@@ -119,9 +84,17 @@ def main():
     wolfImaginedWeIntentionPrior = {(0, ):0.5, (1,): 0.5}
     imaginedWeIntentionPriors = [sheepImagindWeIntentionPrior, sheepImagindWeIntentionPrior, wolfImaginedWeIntentionPrior, wolfImaginedWeIntentionPrior]
     
+    imaginedWeIdsForInferenceSubjects = [[2, 3], [3, 2]]
+    perceptSelfAction = lambda singleAgentAction: singleAgentAction
+    composePerceptOtherAction = lambda numActionSpaceForOthers: MappingActionToAnotherSpace(getWolf2IndividualActionSpace(numActionSpaceForOthers))
+    composePerceptImaginedWeAction = lambda numActionSpaceForOthers: [PerceptImaginedWeAction(imaginedWeIds, perceptSelfAction, composePerceptOtherAction(numActionSpaceForOthers))
+        for imaginedWeIds in imaginedWeIdsForInferenceSubjects]
+    getPerceptActionForAll = lambda noise: [lambda action: action] * 2 + composePerceptImaginedWeAction(noise)
+    
     # Inference of Imagined We
     noInferIntention = lambda intentionPrior, lastState, state: intentionPrior
     sheepUpdateIntentionMethod = noInferIntention
+    
     # Policy Likelihood function: Wolf Centrol Control NN Policy Given Intention
     numStateSpace = 6
     actionSpace1 = [(10, 0), (7, 7), (0, 10), (-7, 7),
@@ -165,22 +138,14 @@ def main():
         composeSoftenWolfCentralControlPolicyGivenIntentionInInference(numActionSpaceForOthers)) 
             for getState in getStateForPolicyGivenIntentionInInferences]
 
-    # Transition Likelihood
-    composeGetOwnState = lambda imaginedWeId: lambda state: np.array(state)[imaginedWeId]
-    getOwnStates = [composeGetOwnState(imaginedWeId) for imaginedWeId in imaginedWeIdsForInferenceSubjects]
-    perceptNoise = 1e-1
-    selfIndex = 0
-    otherIndex = 1
-    composeTransitionLikelihoodFunction = lambda numActionSpaceForOthers: \
-        TransitionLikelihoodFunction(selfIndex, otherIndex, list(it.product(getWolf2IndividualActionSpace(numActionSpaceForOthers))), transit)
+    # ActionPerception Likelihood 
+    calActionPerceptionLikelihood = lambda action, perceivedAction: int(np.allclose(np.array(action), np.array(perceivedAction)))
 
-    composeCalTransitionsLikelihood = lambda numActionSpaceForOthers: [CalTransitionLikelihood(getOwnState, 
-        composeTransitionLikelihoodFunction(numActionSpaceForOthers)) for getOwnState in getOwnStates]
     # Joint Likelihood
-    composeCalJointLikelihood = lambda calPolicyLikelihood, calTransitionLikelihood: lambda intention, state, action, nextState: \
-        calPolicyLikelihood(intention, state, action) * calTransitionLikelihood(state, action, nextState)
-    getCalJointsLikelihood = lambda numActionSpaceForOthers: [composeCalJointLikelihood(calPolicyLikelihood, calTransitionLikelihood) 
-        for calPolicyLikelihood, calTransitionLikelihood in zip(getCalPoliciesLikelihood(numActionSpaceForOthers), composeCalTransitionsLikelihood(numActionSpaceForOthers))]
+    composeCalJointLikelihood = lambda calPolicyLikelihood, calActionPerceptionLikelihood: lambda intention, state, action, perceivedAction: \
+        calPolicyLikelihood(intention, state, action) * calActionPerceptionLikelihood(action, perceivedAction)
+    getCalJointLikelihood = lambda numActionSpaceForOthers: [composeCalJointLikelihood(calPolicyLikelihood, calActionPerceptionLikelihood) 
+        for calPolicyLikelihood in getCalPoliciesLikelihood(numActionSpaceForOthers)]
 
     # Joint Hypothesis Space
     priorDecayRate = 1
@@ -190,7 +155,7 @@ def main():
     getJointHypothesisSpace = lambda numActionSpaceForOthers: pd.MultiIndex.from_product(getVariables(numActionSpaceForOthers), names=['intention', 'action'])
     concernedHypothesisVariable = ['intention']
     composeWolvesInferImaginedWe = lambda numActionSpaceForOthers: [InferOneStep(priorDecayRate, getJointHypothesisSpace(numActionSpaceForOthers),
-            concernedHypothesisVariable, calJointLikelihood) for calJointLikelihood in getCalJointsLikelihood(numActionSpaceForOthers)]
+            concernedHypothesisVariable, calJointLikelihood) for calJointLikelihood in getCalJointLikelihood(numActionSpaceForOthers)]
     getUpdateIntention = lambda numActionSpaceForOthers: [sheepUpdateIntentionMethod, sheepUpdateIntentionMethod] + composeWolvesInferImaginedWe(numActionSpaceForOthers) 
     chooseIntention = sampleFromDistribution
 
@@ -225,40 +190,46 @@ def main():
             getWolfCentralControlPolicyGivenIntention(numActionSpaceForOthers)(state))
     getCentralControlPoliciesGivenIntentions = lambda numActionSpaceForOthers: [sheepCentralControlPolicyGivenIntention, sheepCentralControlPolicyGivenIntention,
             getSoftenWolfCentralControlPolicyGivenIntentionInPlanning(numActionSpaceForOthers), getSoftenWolfCentralControlPolicyGivenIntentionInPlanning(numActionSpaceForOthers)]
-    composeIndividualPoliciesByEvaParameters = lambda numActionSpaceForOthers: [PolicyOnChangableIntention(lastState, 
+    composeIndividualPoliciesByEvaParameters = lambda numActionSpaceForOthers: [PolicyOnChangableIntention(perceptImaginedWeAction, 
         imaginedWeIntentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention) 
-            for imaginedWeIntentionPrior, getStateForPolicyGivenIntention, updateIntentionDistribution, policyGivenIntention
-            in zip(imaginedWeIntentionPriors, getStateForPolicyGivenIntentions, getUpdateIntention(numActionSpaceForOthers), 
+            for perceptImaginedWeAction, imaginedWeIntentionPrior, getStateForPolicyGivenIntention, updateIntentionDistribution, policyGivenIntention 
+            in zip(getPerceptActionForAll(numActionSpaceForOthers), imaginedWeIntentionPriors, getStateForPolicyGivenIntentions, getUpdateIntention(numActionSpaceForOthers),
                 getCentralControlPoliciesGivenIntentions(numActionSpaceForOthers))]
     
     individualIdsForAllAgents = [0, 1, 2, 3]
-    chooseCentrolAction = [maxFromDistribution]* 2 + [sampleFromDistribution]* 2
+    actionChoiceMethods = {'sampleNNPolicy': sampleFromDistribution, 'maxNNPolicy': maxFromDistribution}
+    sheepPolicyName = 'sampleNNPolicy'
+    wolfPolicyName = 'sampleNNPolicy'
+    chooseCentrolAction = [actionChoiceMethods[sheepPolicyName]]* 2 + [actionChoiceMethods[wolfPolicyName]]* 2
     assignIndividualActionMethods = [AssignCentralControlToIndividual(imaginedWeId, individualId, chooseAction) 
             for imaginedWeId, individualId, chooseAction in zip(imaginedWeIdsForAllAgents, individualIdsForAllAgents, chooseCentrolAction)]
 
-    policiesResetAttributes = ['lastState', 'intentionPrior', 'formerIntentionPriors']
-    policiesResetAttributeValues = [dict(zip(policiesResetAttributes, [None, intentionPrior, [intentionPrior]])) for intentionPrior in imaginedWeIntentionPriors]
+    policiesResetAttributes = ['lastAction', 'lastState', 'intentionPrior', 'formerIntentionPriors']
+    policiesResetAttributeValues = [dict(zip(policiesResetAttributes, [None, None, intentionPrior, [intentionPrior]])) for intentionPrior in imaginedWeIntentionPriors]
     returnAttributes = ['formerIntentionPriors']
     composeResetPolicy = lambda individualPolicies: ResetPolicy(policiesResetAttributeValues, individualPolicies, returnAttributes)
+    attributesToRecord = ['lastAction']
+    composeRecordActionForPolicy = lambda individualPolicies: RecordValuesForPolicyAttributes(attributesToRecord, individualPolicies) 
     # Sample and Save Trajectory
-    composeSampleTrajectory = lambda maxRunningSteps, resetPolicy: SampleTrajectory(maxRunningSteps, transit, isTerminal, reset, assignIndividualActionMethods, resetPolicy)
-
+    composeSampleTrajectory = lambda maxRunningSteps, resetPolicy, recordActionForPolicy: SampleTrajectory(maxRunningSteps, transit, isTerminal, reset,
+            assignIndividualActionMethods, resetPolicy, recordActionForPolicy)
+    
     DIRNAME = os.path.dirname(__file__)
     trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithSmallActionSpaceForOthers',
                                     'trajectories')
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)
 
-    trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy':'NNPolicy', 'wolfPolicy':'NNPolicy',
-        'policySoftParameter': softParameterInPlanning, 'chooseAction': 'sample', 'perceptNoise': perceptNoise}
+    trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
+        'policySoftParameter': softParameterInPlanning, 'chooseAction': 'sample'}
     trajectoryExtension = '.pickle'
     getTrajectorySavePath = GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
     saveTrajectoryByParameters = lambda trajectories, parameters: saveToPickle(trajectories, getTrajectorySavePath(parameters))
    
     numTrajectories = 200
     sampleTrajectoriesForConditions = SampleTrjactoriesForConditions(numTrajectories, composeIndividualPoliciesByEvaParameters,
-            composeResetPolicy, composeSampleTrajectory, saveTrajectoryByParameters)
-    #[sampleTrajectoriesForConditions(para) for para in parametersAllCondtion]
+            composeResetPolicy, composeRecordActionForPolicy, composeSampleTrajectory, saveTrajectoryByParameters)
+    [sampleTrajectoriesForConditions(para) for para in parametersAllCondtion]
     
     # Compute Statistics on the Trajectories
     loadTrajectories = LoadTrajectories(getTrajectorySavePath, loadFromPickle)
@@ -279,18 +250,11 @@ def main():
 
     for maxRunningSteps, group in statisticsDf.groupby('maxRunningSteps'):
         group.index = group.index.droplevel('maxRunningSteps')
+        
         axForDraw = fig.add_subplot(numRows, numColumns, plotCounter)
-        group.index.name = 'Set Size of Other\'s Action Space'
-        #if plotCounter % numColumns == 0 :
         axForDraw.set_ylabel('Accumulated Reward')
-        group.plot.line(ax = axForDraw, y = 'mean', yerr = 'se', label = '', legend = None, ylim = (-0.5, 0.5), xlim = (1.8, 9.2), marker = 'o', rot = 0)
-        #for numActionSpaceForOthers, grp in group.groupby('numActionSpaceForOthers'):
-            #if plotCounter <= numColumns:
-            #    axForDraw.set_title('numActionSpaceForOthers = {}'.format(numActionSpaceForOthers))
-            #df = pd.DataFrame(grp.values[0].tolist(), columns = possiblePreyIds, index = ['mean','se']).T
-            #df = grp
-            #__import__('ipdb').set_trace()
-            #df.plot.bar(ax = axForDraw, y = 'mean', yerr = 'se', ylim = (-0.5, 1))
+        group.index.name = 'Set Size of Action Space'
+        group.plot.line(ax = axForDraw, y = 'mean', yerr = 'se', label = '', xlim = (-5, 1005), ylim = (-1, 0.5), marker = 'o', rot = 0 )
         plotCounter = plotCounter + 1
 
     #plt.suptitle('Wolves Accumulated Reward')

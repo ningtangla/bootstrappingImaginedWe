@@ -20,10 +20,9 @@ from src.chooseFromDistribution import sampleFromDistribution, maxFromDistributi
 from src.trajectoriesSaveLoad import GetSavePath, readParametersFromDf, LoadTrajectories, SaveAllTrajectories, \
     GenerateAllSampleIndexSavePaths, saveToPickle, loadFromPickle
 from src.neuralNetwork.policyValueResNet import GenerateModel, ApproximatePolicy, restoreVariables
-from src.inference.inference import CalPolicyLikelihood, CalTransitionLikelihood, InferOneStep, InferOnTrajectory
+from src.inference.inference import CalPolicyLikelihood, InferOneStep, InferOnTrajectory
 from src.evaluation import ComputeStatistics
 from scipy.interpolate import interp1d
-AA = []
 
 class MeasureCrossEntropy:
     def __init__(self, imaginedWeIds, priorIndex):
@@ -36,7 +35,7 @@ class MeasureCrossEntropy:
                 for prior in priors] 
         nonBaseDistributions = [list(prior[self.nonBaseId].values())
                 for prior in priors] 
-        crossEntropies = [stats.entropy(baseDistribution) + 0*stats.entropy(baseDistribution, nonBaseDistribution) 
+        crossEntropies = [stats.entropy(baseDistribution) + stats.entropy(baseDistribution, nonBaseDistribution) 
                 for baseDistribution, nonBaseDistribution in zip(baseDistributions, nonBaseDistributions)]
         #print(priors[2])
         return crossEntropies
@@ -55,7 +54,7 @@ class Interpolate1dData:
 def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
-    manipulatedVariables['perceptNoiseForAll'] = [1e-1, 4e1, 8e1, 1e3]
+    manipulatedVariables['perceptNoiseForAll'] = [1e-1]#, 4e1, 8e1, 1e3]
     manipulatedVariables['maxRunningSteps'] = [100]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
@@ -72,7 +71,7 @@ def main():
         os.makedirs(trajectoryDirectory)
 
     softParameterInPlanning = 2.5
-    trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy':'sampleNNPolicy', 'wolfPolicy':'NNPolicy',
+    trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy':'NNPolicy', 'wolfPolicy':'NNPolicy',
             'policySoftParameter': softParameterInPlanning, 'chooseAction': 'sample'}
     trajectoryExtension = '.pickle'
     getTrajectorySavePath = GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)

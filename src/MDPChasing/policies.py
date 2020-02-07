@@ -91,7 +91,7 @@ class RecordValuesForPolicyAttributes:
         self.policyObjects = policyObjects
     
     def __call__(self, values):
-        [[setattr(policy, attribute, value) for attribute, value in zip(attributes, copy.deepcopy(values))] 
+        [[setattr(policy, attribute, value) for attribute, value in zip(self.attributes, copy.deepcopy(values))] 
                 for policy in self.policyObjects]
         return None
 

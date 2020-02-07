@@ -28,8 +28,8 @@ class SampleTrajectory:
             trajectory.append((state, action, actionDists))
             nextState = self.transit(state, action)
             state = nextState
-            if recordActionForPolicy:
-                recordActionForPolicy(action)
+            if self.recordActionForPolicy:
+                self.recordActionForPolicy([action])
 
         if self.resetPolicy:
             policyAttributes = self.resetPolicy()

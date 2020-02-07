@@ -10,8 +10,8 @@ class ComputeStatistics:
         allTrajectories = self.getTrajectories(oneConditionDf)
         measurementFunction = self.measurementFunction(oneConditionDf)
         allMeasurements = np.array([measurementFunction(trajectory) for trajectory in allTrajectories])
-        data = pd.DataFrame(allMeasurements)
-        data.to_csv(str(oneConditionDf))
+        #data = pd.DataFrame(allMeasurements)
+        #data.to_csv(str(oneConditionDf))
         measurementMean = np.mean(allMeasurements, axis = 0)
         measurementSe = np.std(allMeasurements, axis = 0)/np.sqrt(len(allTrajectories) - 1)
 

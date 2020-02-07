@@ -20,6 +20,7 @@ class InferOneStep:
         self.calJointLikelihood = calJointLikelihood
 
     def __call__(self, intentionPrior, state, perceivedAction):
+        #__import__('ipdb').set_trace()
         jointHypothesisDf = pd.DataFrame(index = self.jointHypothesisSpace)
         intentions = jointHypothesisDf.index.get_level_values('intention')
         actions = jointHypothesisDf.index.get_level_values('action')

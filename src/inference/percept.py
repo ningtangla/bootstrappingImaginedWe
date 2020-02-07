@@ -1,5 +1,4 @@
 import numpy as np
-import scipy.stats
 
 class CalActualTokenAction:
     def __init__(self, imaginedWeId, actionSpace, transite):
@@ -18,15 +17,15 @@ class SampleNoisyAction:
         self.noise = noise
 
     def __call__(self, acturalSingleAgentAction):
-        perceivedAction = np.random.multivariate_normal(acturalSingleAgentAction, np.diag([perceptNoise**2] * len(acturalSingleAgentAction)))
+        perceivedAction = np.random.multivariate_normal(acturalSingleAgentAction, np.diag([self.noise**2] * len(acturalSingleAgentAction)))
         return perceivedAction
 
 class MappingActionToAnotherSpace:
     def __init__(self, anotherSpace):
-        sefl.anotherSpace = anotherSpace
+        self.anotherSpace = anotherSpace
 
     def __call__(self, acturalSingleAgentAction):
-        actionDistance = np.array([np.linalg.norm(acturalSingleAgentAction, action) for action in anotherSpace])
+        actionDistance = np.array([np.linalg.norm(np.array(acturalSingleAgentAction) - np.array(action)) for action in self.anotherSpace])
         possiblePerceivedActionIndex = np.argwhere(actionDistance ==  np.min(actionDistance)).flatten() 
         perceivedActionIndex = np.random.choice(possiblePerceivedActionIndex)
         perceivedAction = self.anotherSpace[perceivedActionIndex]
@@ -39,6 +38,6 @@ class PerceptImaginedWeAction:
         self.perceptOtherAction = perceptOtherAction
 
     def __call__(self, objectiveTokenAction):
-        perceivedImaginedWeAction = [self.perceptSelfAction(objectiveTokenAction[imaginedWeId[0]])] + 
-            [self.perceptOtherAction(action) for action in objectiveTokenAction[imaginedWeId[1:]]
-        return perceivedImaginedWeAction
+        perceivedImaginedWeAction = [self.perceptSelfAction(np.array(objectiveTokenAction)[self.imaginedWeId[0]])] + \
+            [self.perceptOtherAction(action) for action in np.array(objectiveTokenAction)[self.imaginedWeId[1:]]]
+        return np.array(perceivedImaginedWeAction)
