@@ -3,14 +3,17 @@ import bisect
 import functools as ft
 
 class GetAgentPosFromState:
-    def __init__(self, agentId, posIndex):
-        self.agentId = agentId
+    def __init__(self, agentIds, posIndex):
+        self.agentIds = agentIds
         self.posIndex = posIndex
 
     def __call__(self, state):
         state = np.asarray(state)
-        agentStates = state[self.agentId]
-        agentPos = np.asarray([state[self.posIndex] for state in agentStates])
+        agentStates = state[self.agentIds]
+        if np.array(agentStates).ndim > 1:
+            agentPos = np.asarray([state[self.posIndex] for state in agentStates])
+        else:
+            agentPos = agentStates[self.posIndex]
         return agentPos
 
 class GetStateForPolicyGivenIntention:

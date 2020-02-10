@@ -40,9 +40,10 @@ def main():
     
     maxRunningSteps = 100
     softParameterInPlanning = 2.5
-    perceptNoise = 1e-1
-    trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy':'sampleNNPolicy', 'wolfPolicy':'NNPolicy', 'perceptNoise': perceptNoise,
-            'maxRunningSteps': maxRunningSteps, 'policySoftParameter': softParameterInPlanning, 'chooseAction': 'sample'}
+    sheepPolicyName = 'sampleNNPolicy'
+    wolfPolicyName = 'sampleNNPolicy'
+    trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
+            'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps}
     trajectoryExtension = '.pickle'
     getTrajectorySavePath = GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
 
@@ -104,7 +105,7 @@ def main():
     chaseTrial = ChaseTrialWithTraj(stateIndexInTimeStep, drawState, interpolateState, actionIndexInTimeStep, posteriorIndexInTimeStep)
    
     print(len(trajectories))
-    [chaseTrial(trajectory) for trajectory in np.array(trajectories)[[24]]]
+    [chaseTrial(trajectory) for trajectory in np.array(trajectories)[0:]]
     #[24 for 8intentions]
 if __name__ == '__main__':
     main()

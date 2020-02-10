@@ -77,12 +77,12 @@ class TestDiscreteActionPolicies(unittest.TestCase):
 @ddt
 class TestPolicyOnChangeableIntention(unittest.TestCase):
     def setUp(self):
-        self.lastState = None
-        self.updateIntentionDistribution = lambda intentionPrior, lastState, state: intentionPrior
+        self.perceptAction = lambda action: action
+        self.updateIntentionDistribution = lambda intentionPrior, state, perceivedAction: intentionPrior
         self.chooseIntention = sampleFromDistribution
         self.actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7), (-10, 0), (-7, -7), (0, -10), (7, -7)]
-        self.preyId = 0
-        self.predatorId = 1
+        self.preyId = [0]
+        self.predatorId = [1]
         self.posIndex = [0, 1]
         self.getPredatorPos = GetAgentPosFromState(self.predatorId, self.posIndex)
         self.getPreyPos = GetAgentPosFromState(self.preyId, self.posIndex)
@@ -97,7 +97,7 @@ class TestPolicyOnChangeableIntention(unittest.TestCase):
     @unpack
     def testHeatSeekingDiscreteDeterministicPolicyOnChangableIntention(self, imaginedWeId, intentionPrior, state, groundTruthCentralControlAction):
         getStateForPolicyGivenIntention = GetStateForPolicyGivenIntention(imaginedWeId)
-        policy = PolicyOnChangableIntention(self.lastState, intentionPrior, self.updateIntentionDistribution,
+        policy = PolicyOnChangableIntention(self.perceptAction, intentionPrior, self.updateIntentionDistribution,
                 self.chooseIntention, getStateForPolicyGivenIntention, self.policyGivenIntention)
         centralControlActionDist = policy(state)
         action = maxFromDistribution(centralControlActionDist)

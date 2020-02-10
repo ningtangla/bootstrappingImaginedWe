@@ -20,10 +20,9 @@ from src.chooseFromDistribution import sampleFromDistribution, maxFromDistributi
 from src.trajectoriesSaveLoad import GetSavePath, readParametersFromDf, LoadTrajectories, SaveAllTrajectories, \
     GenerateAllSampleIndexSavePaths, saveToPickle, loadFromPickle
 from src.neuralNetwork.policyValueResNet import GenerateModel, ApproximatePolicy, restoreVariables
-from src.inference.inference import CalPolicyLikelihood, CalTransitionLikelihood, InferOneStep, InferOnTrajectory
+from src.inference.inference import CalPolicyLikelihood, InferOneStep, InferOnTrajectory
 from src.evaluation import ComputeStatistics
 from scipy.interpolate import interp1d
-AA = []
 
 class MeasureCrossEntropy:
     def __init__(self, imaginedWeIds, priorIndex):
@@ -39,7 +38,6 @@ class MeasureCrossEntropy:
                 for prior in priors] 
         crossEntropies = [stats.entropy(baseDistribution) + stats.entropy(baseDistribution, nonBaseDistribution) 
                 for baseDistribution, nonBaseDistribution in zip(baseDistributions, nonBaseDistributions)]
-        print(priors[-1])
         return crossEntropies
 
 class Interpolate1dData:
@@ -72,10 +70,11 @@ def main():
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)
 
-    softParameterInPlanning = 2.5
-    perceptNoise = 1e-1
-    trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy':'sampleNNPolicy', 'wolfPolicy':'NNPolicy', 'perceptNoise':perceptNoise,
-            'policySoftParameter': softParameterInPlanning, 'chooseAction': 'sample'}
+    softParameterInPlanning = 2.5 
+    sheepPolicyName = 'sampleNNPolicy'
+    wolfPolicyName = 'sampleNNPolicy'
+    trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
+            'policySoftParameter': softParameterInPlanning}
     trajectoryExtension = '.pickle'
     getTrajectorySavePath = GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
     
@@ -90,12 +89,12 @@ def main():
     measureFunction = lambda df: lambda trajectory: composeInterpolateFunction(df)(composeMeasureCrossEntropy(df)(trajectory))
     computeStatistics = ComputeStatistics(loadTrajectoriesFromDf, measureFunction)
     statisticsDf = toSplitFrame.groupby(levelNames).apply(computeStatistics)
+    
     fig = plt.figure()
-    #numColumns = len(manipulatedVariables['perceptNoise'])
+    #numColumns = len(manipulatedVariables['numIntentions'])
     numColumns = 1
     numRows = len(manipulatedVariables['maxRunningSteps'])
     plotCounter = 1
-    #__import__('ipdb').set_trace() 
     for maxRunningSteps, group in statisticsDf.groupby('maxRunningSteps'):
         group.index = group.index.droplevel('maxRunningSteps')
         axForDraw = fig.add_subplot(numRows, numColumns, plotCounter)
@@ -103,15 +102,12 @@ def main():
         axForDraw.set_ylabel('Cross Entropy')
         for numIntentions, grp in group.groupby('numIntentions'):
             df = pd.DataFrame(grp.values[0].tolist(), columns = list(range(maxRunningSteps)), index = ['mean','se']).T
-            #print(grp)
-            #print(df)
-            #print(max(AA))
-            #print(AA)
-            df.plot.line(ax = axForDraw, label = 'Set Size of Intentions = {}'.format(numIntentions), y = 'mean', yerr = 'se', ylim = (0, 2.5), rot = 0)
+            df.plot.line(ax = axForDraw, label = 'Set Size of Intentions = {}'.format(numIntentions), label = '', y = 'mean', yerr = 'se', ylim = (0, 2.5), rot = 0)
         plotCounter = plotCounter + 1
 
     #plt.suptitle('Wolves Cross Entropy')
-    plt.legend(loc='best')
+    #plt.legend(loc='best')
     plt.show()
+
 if __name__ == '__main__':
     main()

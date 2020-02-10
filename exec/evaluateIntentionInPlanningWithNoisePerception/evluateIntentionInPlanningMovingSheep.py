@@ -37,11 +37,9 @@ class ActionPerceptionLikelihood:
         return likelihood
 
 class SampleTrjactoriesForConditions:
-    def __init__(self, numTrajectories, composeIndividualPoliciesByEvaParameters, composeResetPolicy, composeRecordActionForPolicy, composeSampleTrajectory, saveTrajectoryByParameters):
+    def __init__(self, numTrajectories, composeIndividualPoliciesByEvaParameters, composeSampleTrajectory, saveTrajectoryByParameters):
         self.numTrajectories = numTrajectories
         self.composeIndividualPoliciesByEvaParameters = composeIndividualPoliciesByEvaParameters
-        self.composeResetPolicy = composeResetPolicy
-        self.composeRecordActionForPolicy = composeRecordActionForPolicy
         self.composeSampleTrajectory = composeSampleTrajectory
         self.saveTrajectoryByParameters = saveTrajectoryByParameters
 
@@ -50,9 +48,7 @@ class SampleTrjactoriesForConditions:
         perceptNoise = parameters['perceptNoiseForAll']
         maxRunningSteps = parameters['maxRunningSteps']
         individualPolicies = self.composeIndividualPoliciesByEvaParameters(perceptNoise)
-        resetPolicy = self.composeResetPolicy(individualPolicies)
-        recordActionForPolicy = self.composeRecordActionForPolicy(individualPolicies)
-        sampleTrajectory = self.composeSampleTrajectory(maxRunningSteps, resetPolicy, recordActionForPolicy)
+        sampleTrajectory = self.composeSampleTrajectory(maxRunningSteps, individualPolicies)
         policy = lambda state: [individualPolicy(state) for individualPolicy in individualPolicies]
         trajectories = [sampleTrajectory(policy) for trjaectoryIndex in range(self.numTrajectories)]
         self.saveTrajectoryByParameters(trajectories, parameters)
@@ -158,7 +154,8 @@ def main():
             concernedHypothesisVariable, calJointLikelihood) for calJointLikelihood in getCalJointLikelihood(perceptNoise)]
     getUpdateIntention = lambda perceptNoise: [sheepUpdateIntentionMethod, sheepUpdateIntentionMethod] + composeInferImaginedWe(perceptNoise)
     chooseIntention = sampleFromDistribution
-
+    
+    # Get State of We and Intention
     imaginedWeIdsForAllAgents = [[0], [1], [2, 3], [3, 2]]
     getStateForPolicyGivenIntentions = [GetStateForPolicyGivenIntention(imaginedWeId) for imaginedWeId in imaginedWeIdsForAllAgents]
 
@@ -196,7 +193,7 @@ def main():
 
     individualIdsForAllAgents = [0, 1, 2, 3]
     actionChoiceMethods = {'sampleNNPolicy': sampleFromDistribution, 'maxNNPolicy': maxFromDistribution}
-    sheepPolicyName = 'sampleNNPolicy'
+    sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
     chooseCentrolAction = [actionChoiceMethods[sheepPolicyName]]* 2 + [actionChoiceMethods[wolfPolicyName]]* 2
     assignIndividualActionMethods = [AssignCentralControlToIndividual(imaginedWeId, individualId, chooseAction) 
@@ -208,9 +205,10 @@ def main():
     composeResetPolicy = lambda individualPolicies: ResetPolicy(policiesResetAttributeValues, individualPolicies, returnAttributes)
     attributesToRecord = ['lastAction']
     composeRecordActionForPolicy = lambda individualPolicies: RecordValuesForPolicyAttributes(attributesToRecord, individualPolicies) 
+    
     # Sample and Save Trajectory
-    composeSampleTrajectory = lambda maxRunningSteps, resetPolicy, recordActionForPolicy: SampleTrajectory(maxRunningSteps, transit, isTerminal, reset,
-            assignIndividualActionMethods, resetPolicy, recordActionForPolicy)
+    composeSampleTrajectory = lambda maxRunningSteps, individualPolicies: SampleTrajectory(maxRunningSteps, transit, isTerminal, reset,
+            assignIndividualActionMethods, composeResetPolicy(individualPolicies), composeRecordActionForPolicy(individualPolicies))
 
     DIRNAME = os.path.dirname(__file__)
     trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithNoisePerception',
@@ -224,9 +222,9 @@ def main():
     getTrajectorySavePath = GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
     saveTrajectoryByParameters = lambda trajectories, parameters: saveToPickle(trajectories, getTrajectorySavePath(parameters))
    
-    numTrajectories = 2
+    numTrajectories = 200
     sampleTrajectoriesForConditions = SampleTrjactoriesForConditions(numTrajectories, composeIndividualPoliciesByEvaParameters,
-            composeResetPolicy, composeRecordActionForPolicy, composeSampleTrajectory, saveTrajectoryByParameters)
+            composeSampleTrajectory, saveTrajectoryByParameters)
     [sampleTrajectoriesForConditions(para) for para in parametersAllCondtion]
 
     # Compute Statistics on the Trajectories
@@ -254,12 +252,6 @@ def main():
         axForDraw.set_ylabel('Accumulated Reward')
         group.index.name = 'Action Perception Noise'
         group.plot.line(ax = axForDraw, y = 'mean', yerr = 'se', label = '', xlim = (-5, 1005), ylim = (-1, 0.5), marker = 'o', rot = 0 )
-        #for perceptNoise, grp in group.groupby('perceptNoise'):
-            #grp.index = grp.index.droplevel('perceptNoise')
-            #if plotCounter <= numColumns:
-            #    axForDraw.set_title('perceptNoise = {}'.format(perceptNoise))
-            #df = pd.DataFrame(grp.values[0].tolist(), columns = possiblePreyIds, index = ['mean','se']).T
-            #df = grp
         plotCounter = plotCounter + 1
 
     #plt.suptitle('Wolves Accumulated Reward')

@@ -30,11 +30,9 @@ from src.evaluation import ComputeStatistics
 
 
 class SampleTrjactoriesForConditions:
-    def __init__(self, numTrajectories, composeIndividualPoliciesByEvaParameters, composeResetPolicy, composeRecordActionForPolicy, composeSampleTrajectory, saveTrajectoryByParameters):
+    def __init__(self, numTrajectories, composeIndividualPoliciesByEvaParameters, composeSampleTrajectory, saveTrajectoryByParameters):
         self.numTrajectories = numTrajectories
         self.composeIndividualPoliciesByEvaParameters = composeIndividualPoliciesByEvaParameters
-        self.composeResetPolicy = composeResetPolicy
-        self.composeRecordActionForPolicy = composeRecordActionForPolicy
         self.composeSampleTrajectory = composeSampleTrajectory
         self.saveTrajectoryByParameters = saveTrajectoryByParameters
 
@@ -43,11 +41,10 @@ class SampleTrjactoriesForConditions:
         numActionSpaceForOthers = parameters['numActionSpaceForOthers']
         maxRunningSteps = parameters['maxRunningSteps']
         individualPolicies = self.composeIndividualPoliciesByEvaParameters(numActionSpaceForOthers)
-        resetPolicy = self.composeResetPolicy(individualPolicies)
-        recordActionForPolicy = self.composeRecordActionForPolicy(individualPolicies)
-        sampleTrajectory = self.composeSampleTrajectory(maxRunningSteps, resetPolicy, recordActionForPolicy)
+        sampleTrajectory = self.composeSampleTrajectory(maxRunningSteps, individualPolicies)
         policy = lambda state: [individualPolicy(state) for individualPolicy in individualPolicies]
         trajectories = [sampleTrajectory(policy) for trjaectoryIndex in range(self.numTrajectories)]
+        self.saveTrajectoryByParameters(trajectories, parameters)
 
 def main():
     # manipulated variables
@@ -78,8 +75,6 @@ def main():
     isTerminal = IsTerminal(killzoneRadius, getPreyPos, getPredatorPos)
 
     # MDP Policy
-    lastState = None
-
     sheepImagindWeIntentionPrior = {(2, 3): 1}
     wolfImaginedWeIntentionPrior = {(0, ):0.5, (1,): 0.5}
     imaginedWeIntentionPriors = [sheepImagindWeIntentionPrior, sheepImagindWeIntentionPrior, wolfImaginedWeIntentionPrior, wolfImaginedWeIntentionPrior]
@@ -131,7 +126,6 @@ def main():
     composeSoftenWolfCentralControlPolicyGivenIntentionInInference = lambda numActionSpaceForOthers: lambda state: softPolicyInInference(
             getWolfCentralControlPolicyGivenIntention(numActionSpaceForOthers)(state))
     
-    imaginedWeIdsForInferenceSubjects = [[2, 3], [3, 2]]
     getStateForPolicyGivenIntentionInInferences = [GetStateForPolicyGivenIntention(imaginedWeIds) 
             for imaginedWeIds in imaginedWeIdsForInferenceSubjects] 
     getCalPoliciesLikelihood = lambda numActionSpaceForOthers: [CalPolicyLikelihood(getState,
@@ -158,7 +152,8 @@ def main():
             concernedHypothesisVariable, calJointLikelihood) for calJointLikelihood in getCalJointLikelihood(numActionSpaceForOthers)]
     getUpdateIntention = lambda numActionSpaceForOthers: [sheepUpdateIntentionMethod, sheepUpdateIntentionMethod] + composeWolvesInferImaginedWe(numActionSpaceForOthers) 
     chooseIntention = sampleFromDistribution
-
+    
+    # Get State of We and Intention
     imaginedWeIdsForAllAgents = [[0], [1], [2, 3], [3, 2]]
     getStateForPolicyGivenIntentions = [GetStateForPolicyGivenIntention(imaginedWeId) for imaginedWeId in imaginedWeIdsForAllAgents]
 
@@ -198,7 +193,7 @@ def main():
     
     individualIdsForAllAgents = [0, 1, 2, 3]
     actionChoiceMethods = {'sampleNNPolicy': sampleFromDistribution, 'maxNNPolicy': maxFromDistribution}
-    sheepPolicyName = 'sampleNNPolicy'
+    sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
     chooseCentrolAction = [actionChoiceMethods[sheepPolicyName]]* 2 + [actionChoiceMethods[wolfPolicyName]]* 2
     assignIndividualActionMethods = [AssignCentralControlToIndividual(imaginedWeId, individualId, chooseAction) 
@@ -210,9 +205,10 @@ def main():
     composeResetPolicy = lambda individualPolicies: ResetPolicy(policiesResetAttributeValues, individualPolicies, returnAttributes)
     attributesToRecord = ['lastAction']
     composeRecordActionForPolicy = lambda individualPolicies: RecordValuesForPolicyAttributes(attributesToRecord, individualPolicies) 
+    
     # Sample and Save Trajectory
-    composeSampleTrajectory = lambda maxRunningSteps, resetPolicy, recordActionForPolicy: SampleTrajectory(maxRunningSteps, transit, isTerminal, reset,
-            assignIndividualActionMethods, resetPolicy, recordActionForPolicy)
+    composeSampleTrajectory = lambda maxRunningSteps, individualPolicies: SampleTrajectory(maxRunningSteps, transit, isTerminal, reset,
+            assignIndividualActionMethods, composeResetPolicy(individualPolicies), composeRecordActionForPolicy(individualPolicies))
     
     DIRNAME = os.path.dirname(__file__)
     trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithSmallActionSpaceForOthers',
@@ -221,14 +217,14 @@ def main():
         os.makedirs(trajectoryDirectory)
 
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
-        'policySoftParameter': softParameterInPlanning, 'chooseAction': 'sample'}
+        'policySoftParameter': softParameterInPlanning}
     trajectoryExtension = '.pickle'
     getTrajectorySavePath = GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
     saveTrajectoryByParameters = lambda trajectories, parameters: saveToPickle(trajectories, getTrajectorySavePath(parameters))
    
     numTrajectories = 200
     sampleTrajectoriesForConditions = SampleTrjactoriesForConditions(numTrajectories, composeIndividualPoliciesByEvaParameters,
-            composeResetPolicy, composeRecordActionForPolicy, composeSampleTrajectory, saveTrajectoryByParameters)
+            composeSampleTrajectory, saveTrajectoryByParameters)
     [sampleTrajectoriesForConditions(para) for para in parametersAllCondtion]
     
     # Compute Statistics on the Trajectories
@@ -253,12 +249,11 @@ def main():
         
         axForDraw = fig.add_subplot(numRows, numColumns, plotCounter)
         axForDraw.set_ylabel('Accumulated Reward')
-        group.index.name = 'Set Size of Action Space'
-        group.plot.line(ax = axForDraw, y = 'mean', yerr = 'se', label = '', xlim = (-5, 1005), ylim = (-1, 0.5), marker = 'o', rot = 0 )
+        group.index.name = 'Set Size of Action Space for Others'
+        group.plot.line(ax = axForDraw, y = 'mean', yerr = 'se', label = '', xlim = (1.9, 9.1), ylim = (-1, 0.5), marker = 'o', rot = 0 )
         plotCounter = plotCounter + 1
 
     #plt.suptitle('Wolves Accumulated Reward')
-    plt.legend(loc='best')
     plt.show()
 if __name__ == '__main__':
     main()

@@ -6,10 +6,10 @@ class CalPolicyLikelihood:
         self.getStateForPolicyGivenIntention = getStateForPolicyGivenIntention
         self.policyGivenIntention = policyGivenIntention
 
-    def __call__(self, intention, state, ownAction):
+    def __call__(self, intention, state, weActionSelfFirst):
         stateRelativeToIntention = self.getStateForPolicyGivenIntention(state, intention)
         centralControlActionDist = self.policyGivenIntention(stateRelativeToIntention)
-        policyLikelihood = centralControlActionDist[ownAction]
+        policyLikelihood = centralControlActionDist[weActionSelfFirst]
         return policyLikelihood
 
 class InferOneStep:
@@ -20,7 +20,6 @@ class InferOneStep:
         self.calJointLikelihood = calJointLikelihood
 
     def __call__(self, intentionPrior, state, perceivedAction):
-        #__import__('ipdb').set_trace()
         jointHypothesisDf = pd.DataFrame(index = self.jointHypothesisSpace)
         intentions = jointHypothesisDf.index.get_level_values('intention')
         actions = jointHypothesisDf.index.get_level_values('action')

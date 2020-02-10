@@ -37,7 +37,6 @@ class MeasureCrossEntropy:
                 for prior in priors] 
         crossEntropies = [stats.entropy(baseDistribution) + stats.entropy(baseDistribution, nonBaseDistribution) 
                 for baseDistribution, nonBaseDistribution in zip(baseDistributions, nonBaseDistributions)]
-        #print(priors[2])
         return crossEntropies
 
 class Interpolate1dData:
@@ -54,7 +53,7 @@ class Interpolate1dData:
 def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
-    manipulatedVariables['perceptNoiseForAll'] = [1e-1]#, 4e1, 8e1, 1e3]
+    manipulatedVariables['perceptNoiseForAll'] = [1e-1, 4e1, 8e1]#, 1e3]
     manipulatedVariables['maxRunningSteps'] = [100]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
@@ -71,8 +70,10 @@ def main():
         os.makedirs(trajectoryDirectory)
 
     softParameterInPlanning = 2.5
-    trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy':'NNPolicy', 'wolfPolicy':'NNPolicy',
-            'policySoftParameter': softParameterInPlanning, 'chooseAction': 'sample'}
+    sheepPolicyName = 'sampleNNPolicy'
+    wolfPolicyName = 'sampleNNPolicy'
+    trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
+        'policySoftParameter': softParameterInPlanning}
     trajectoryExtension = '.pickle'
     getTrajectorySavePath = GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
     
@@ -88,7 +89,7 @@ def main():
     computeStatistics = ComputeStatistics(loadTrajectoriesFromDf, measureFunction)
     statisticsDf = toSplitFrame.groupby(levelNames).apply(computeStatistics)
     fig = plt.figure()
-    #numColumns = len(manipulatedVariables['perceptNoise'])
+    #numColumns = len(manipulatedVariables['perceptNoiseForAll'])
     numColumns = 1
     numRows = len(manipulatedVariables['maxRunningSteps'])
     plotCounter = 1
@@ -100,10 +101,6 @@ def main():
         axForDraw.set_ylabel('Cross Entropy')
         for perceptNoise, grp in group.groupby('perceptNoiseForAll'):
             df = pd.DataFrame(grp.values[0].tolist(), columns = list(range(maxRunningSteps)), index = ['mean','se']).T
-            #print(grp)
-            #print(df)
-            #print(max(AA))
-            #print(AA)
             df.plot.line(ax = axForDraw, label = 'Action Perception Noise = {}'.format(perceptNoise), y = 'mean', yerr = 'se', ylim = (0, 1), rot = 0)
         plotCounter = plotCounter + 1
 
