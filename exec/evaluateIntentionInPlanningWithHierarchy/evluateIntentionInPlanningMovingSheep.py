@@ -49,7 +49,7 @@ class SampleTrjactoriesForConditions:
 def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
-    manipulatedVariables['numActionSpaceForOthers'] = [2, 3, 5, 9]
+    manipulatedVariables['numActionSpaceForOthers'] = [5]
     manipulatedVariables['maxRunningSteps'] = [100]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
@@ -92,7 +92,8 @@ def main():
     
     # Policy Likelihood function: Wolf Centrol Control NN Policy Given Intention
     numStateSpace = 6
-    actionSpace1 = [(10, 0), (7, 7), (0, 10), (-7, 7),
+    actionSpace1 = [(10, 0), (0, 10), (-10, 0), (0, -10), (0, 0)]
+    sheepActionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
                    (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
     possibleActionSpace2 = {2: [(10, 0), (-10, 0)], 3: [(10, 0), (-10, 0), (0, 0)], 
             5: [(10, 0), (0, 10), (-10, 0), (0, -10), (0, 0)], 9: [(10, 0), (7, 7), (0, 10), (-7, 7),
@@ -114,7 +115,7 @@ def main():
     getInitWolfCentralControlModel = lambda numActionSpaceForOthers: composeGenerateWolfCentralControlModel(numActionSpaceForOthers)(sharedWidths * wolfNNDepth, actionLayerWidths, valueLayerWidths, 
             resBlockSize, initializationMethod, dropoutRate)
     getWolfModelPath = lambda numActionSpaceForOthers: os.path.join('..', '..', 'data', 'preTrainModel', 
-            'agentId=9'+str(numActionSpaceForOthers)+'_depth=9_learningRate=0.0001_maxRunningSteps=100_miniBatchSize=256_numSimulations=200_trainSteps=50000')
+            'agentId=5'+str(numActionSpaceForOthers)+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=200_trainSteps=50000')
     getWolfCentralControlNNModel = lambda numActionSpaceForOthers: restoreVariables(getInitWolfCentralControlModel(numActionSpaceForOthers), getWolfModelPath(numActionSpaceForOthers))
     wolfCentralControlNNModels = {numActionSpaceForOthers: getWolfCentralControlNNModel(numActionSpaceForOthers) 
             for numActionSpaceForOthers in manipulatedVariables['numActionSpaceForOthers']}
@@ -160,7 +161,7 @@ def main():
     #NN Policy Given Intention
     numStateSpace = 6
     preyPowerRatio = 2.5
-    sheepIndividualActionSpace = list(map(tuple, np.array(actionSpace1) * preyPowerRatio))
+    sheepIndividualActionSpace = list(map(tuple, np.array(sheepActionSpace) * preyPowerRatio))
     sheepCentralControlActionSpace = list(it.product(sheepIndividualActionSpace))
     numSheepActionSpace = len(sheepCentralControlActionSpace)
     regularizationFactor = 1e-4
@@ -168,14 +169,14 @@ def main():
     sharedWidths = [128]
     actionLayerWidths = [128]
     valueLayerWidths = [128]
-    sheepNNDepth = 5
+    sheepNNDepth = 9
     resBlockSize = 2
     dropoutRate = 0.0
     initializationMethod = 'uniform'
     initSheepCentralControlModel = generateSheepCentralControlModel(sharedWidths * sheepNNDepth, actionLayerWidths, valueLayerWidths, 
             resBlockSize, initializationMethod, dropoutRate)
     sheepModelPath = os.path.join('..', '..', 'data', 'preTrainModel',
-            'agentId=0_depth=5_learningRate=0.0001_maxRunningSteps=150_miniBatchSize=256_numSimulations=200_trainSteps=50000')
+            'agentId=0_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=100_trainSteps=50000')
     sheepCentralControlNNModel = restoreVariables(initSheepCentralControlModel, sheepModelPath)
     sheepCentralControlPolicyGivenIntention = ApproximatePolicy(sheepCentralControlNNModel, sheepCentralControlActionSpace)
 
@@ -212,7 +213,7 @@ def main():
             getIndividualActionMethods, composeResetPolicy(individualPolicies), composeRecordActionForPolicy(individualPolicies))
     
     DIRNAME = os.path.dirname(__file__)
-    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithSmallActionSpaceForOthers',
+    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchy',
                                     'trajectories')
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)

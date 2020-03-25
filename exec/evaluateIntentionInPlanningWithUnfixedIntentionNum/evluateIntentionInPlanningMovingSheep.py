@@ -47,7 +47,7 @@ class SampleTrjactoriesForConditions:
 def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
-    manipulatedVariables['numIntentions'] = [2, 4, 8]
+    manipulatedVariables['numIntentions'] = [2, 4]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
     modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)
@@ -109,7 +109,7 @@ def main():
     initWolfCentralControlModel = generateWolfCentralControlModel(sharedWidths * wolfNNDepth, actionLayerWidths, valueLayerWidths, 
             resBlockSize, initializationMethod, dropoutRate)
     wolfModelPath = os.path.join('..', '..', 'data', 'preTrainModel', 
-            'agentId=1_depth=9_learningRate=0.0001_maxRunningSteps=100_miniBatchSize=256_numSimulations=200_trainSteps=50000')
+            'agentId=99_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=200_trainSteps=50000')
     wolfCentralControlNNModel = restoreVariables(initWolfCentralControlModel, wolfModelPath)
     wolfCentralControlPolicyGivenIntention = ApproximatePolicy(wolfCentralControlNNModel, wolfCentralControlActionSpace)
 
@@ -161,14 +161,14 @@ def main():
     sharedWidths = [128]
     actionLayerWidths = [128]
     valueLayerWidths = [128]
-    sheepNNDepth = 5
+    sheepNNDepth = 9
     resBlockSize = 2
     dropoutRate = 0.0
     initializationMethod = 'uniform'
     initSheepCentralControlModel = generateSheepCentralControlModel(sharedWidths * sheepNNDepth, actionLayerWidths, valueLayerWidths, 
             resBlockSize, initializationMethod, dropoutRate)
     sheepModelPath = os.path.join('..', '..', 'data', 'preTrainModel',
-            'agentId=0_depth=5_learningRate=0.0001_maxRunningSteps=150_miniBatchSize=256_numSimulations=200_trainSteps=50000')
+            'agentId=0_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=100_trainSteps=50000')
     sheepCentralControlNNModel = restoreVariables(initSheepCentralControlModel, sheepModelPath)
     sheepCentralControlPolicyGivenIntention = ApproximatePolicy(sheepCentralControlNNModel, sheepCentralControlActionSpace)
 
@@ -187,8 +187,10 @@ def main():
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
     composeChooseCentrolAction = lambda numIntentions: [actionChoiceMethods[sheepPolicyName]]* numIntentions + [actionChoiceMethods[wolfPolicyName]]* 2
-    composeAssignIndividualActionMethods = lambda numIntentions: [AssignCentralControlToIndividual(imaginedWeId, individualId, chooseAction) for imaginedWeId, individualId, chooseAction in
-            zip(getImaginedWeIdsForAllAgents(numIntentions), getIndividualIdsForAllAgents(numIntentions), composeChooseCentrolAction(numIntentions))]
+    composeAssignIndividualAction = lambda numIntentions: [AssignCentralControlToIndividual(imaginedWeId, individualId) for imaginedWeId, individualId in
+            zip(getImaginedWeIdsForAllAgents(numIntentions), getIndividualIdsForAllAgents(numIntentions))]
+    composeGetIndividualActionMethods = lambda numIntentions: [lambda centrolActionDist: assign(chooseAction(centrolActionDist)) for assign, chooseAction in
+            zip(composeAssignIndividualAction(numIntentions), composeChooseCentrolAction(numIntentions))]
 
     policiesResetAttributes = ['lastState', 'lastAction', 'intentionPrior', 'formerIntentionPriors']
     getPoliciesResetAttributeValues = lambda numIntentions: [dict(zip(policiesResetAttributes, [None, None, intentionPrior, [intentionPrior]])) for intentionPrior in
@@ -199,9 +201,9 @@ def main():
     composeRecordActionForPolicy = lambda individualPolicies: RecordValuesForPolicyAttributes(attributesToRecord, individualPolicies) 
     
     # Sample and Save Trajectory
-    maxRunningSteps = 100
+    maxRunningSteps = 101
     composeSampleTrajectory = lambda numIntentions, individualPolicies: SampleTrajectory(maxRunningSteps, transit, getIsTerminal(numIntentions),
-            composeReset(numIntentions), composeAssignIndividualActionMethods(numIntentions), composeResetPolicy(numIntentions, individualPolicies),
+            composeReset(numIntentions), composeGetIndividualActionMethods(numIntentions), composeResetPolicy(numIntentions, individualPolicies),
             composeRecordActionForPolicy(individualPolicies))
 
     DIRNAME = os.path.dirname(__file__)
@@ -219,7 +221,7 @@ def main():
     numTrajectories = 200
     sampleTrajectoriesForConditions = SampleTrjactoriesForConditions(numTrajectories, composeIndividualPoliciesByEvaParameters,
             composeSampleTrajectory, saveTrajectoryByParameters)
-    [sampleTrajectoriesForConditions(para) for para in parametersAllCondtion]
+    #[sampleTrajectoriesForConditions(para) for para in parametersAllCondtion]
 
     # Compute Statistics on the Trajectories
     loadTrajectories = LoadTrajectories(getTrajectorySavePath, loadFromPickle)
@@ -230,10 +232,11 @@ def main():
     statisticsDf = toSplitFrame.groupby(levelNames).apply(computeStatistics)
     fig = plt.figure()
     statisticsDf.index.name = 'Set Size of Intentions'
-    ax = statisticsDf.plot(y = 'mean', yerr = 'se', ylim = (0, 0.5), label = '',  xlim = (1.95, 8.05), rot = 0)
+    __import__('ipdb').set_trace()
+    ax = statisticsDf.plot(y = 'mean', yerr = 'se', ylim = (0, 0.5), label = '',  xlim = (21.95, 88.05), rot = 0)
     ax.set_ylabel('Accumulated Reward')
     #plt.suptitle('Wolves Accumulated Rewards')
-    plt.legend(loc='best')
+    #plt.legend(loc='best')
     plt.show()
 
 if __name__ == '__main__':

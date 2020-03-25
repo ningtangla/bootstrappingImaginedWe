@@ -35,6 +35,24 @@ class TransitForNoPhysics():
         newState, newAction = list(zip(*checkedNewStateAndVelocities))
         return np.array(newState)
 
+class TransitGivenOtherPolicy():
+    def __init__(self, selfId, transition, otherPolicy, chooseAction, centralControlFlag = False):
+        self.selfId = selfId
+        self.transition = transition
+        self.otherPolicy = otherPolicy
+        self.chooseAction = chooseAction
+        self.centralControlFlag = centralControlFlag
+
+    def __call__(self, state, individualAction):
+        actionDists = self.otherPolicy(state)
+        action = [choose(actionDist) for choose, actionDist in zip(self.chooseAction, actionDists)]
+        if not self.centralControlFlag:
+            individualActions = action
+        else:
+            individualActions = np.concatenate(action)
+        individualActions[self.selfId] = individualAction
+        newState = self.transition(state, individualActions)
+        return newState
 
 class IsTerminal():
     def __init__(self, minDistance, getPreyPos, getPredatorPos):
