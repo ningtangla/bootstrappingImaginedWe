@@ -39,17 +39,7 @@ class TestEnvNoPhysics(unittest.TestCase):
         nextState = self.transition(state, action)
         truthValue = nextState == groundTruthReturnedNextState
         self.assertTrue(truthValue.all())
-    
-    @data((np.array([[0, 0], [0, 0]]), np.array([((0, 0),), ((0, 0),)]), np.array([[0, 0], [0, 0]])),
-          (np.array([[1, 2], [3, 4]]), np.array([((1, 0),), ((0, 1),)]), np.array([[2, 2], [3, 5]])),
-          (np.array([[1, 2], [3, 4]]), np.array([((1, 0), (0, 1))]), np.array([[2, 2], [3, 5]])))
-    @unpack
-    def testTransitionCentralControl(self, state, action, groundTruthReturnedNextState):
-        transition = TransitForNoPhysics(self.stayInBoundaryByReflectVelocity, centralControlFlag = True)
-        nextState = transition(state, action)
-        truthValue = nextState == groundTruthReturnedNextState
-        self.assertTrue(truthValue.all())
-    
+     
     @data((np.array([[0, 0], [0, 0]]), np.array([0, 0]), 0, {(0, 0):1},  np.array([[0, 0], [0, 0]])),
           (np.array([[0, 0], [0, 0]]), np.array([0, 0]), 0, {(1, 0):1},  np.array([[0, 0], [1, 0]])),
           (np.array([[0, 0], [0, 0]]), np.array([0, 0]), 1, {(0, 0):1},  np.array([[0, 0], [0, 0]])),
@@ -68,6 +58,29 @@ class TestEnvNoPhysics(unittest.TestCase):
         otherPolicy = lambda state: [policy(state), policy(state)]
         chooseAction = [sampleFromDistribution, sampleFromDistribution]
         transitGivenOtherPolicy = TransitGivenOtherPolicy(selfId, self.transition, otherPolicy, chooseAction)
+        nextState = transitGivenOtherPolicy(state, individualAction)
+        truthValue = nextState == groundTruthReturnedNextState
+        self.assertTrue(truthValue.all())
+    
+    @data((np.array([[0, 0], [0, 0]]), np.array([(0, 0),]), 0, {((0, 0),):1},  np.array([[0, 0], [0, 0]])),
+          (np.array([[0, 0], [0, 0]]), np.array([(0, 0),]), 0, {((1, 0),):1},  np.array([[0, 0], [1, 0]])),
+          (np.array([[0, 0], [0, 0]]), np.array([(0, 0),]), 1, {((0, 0),):1},  np.array([[0, 0], [0, 0]])),
+          (np.array([[0, 0], [0, 0]]), np.array([(0, 0),]), 1, {((1, 0),):1},  np.array([[1, 0], [0, 0]])),
+          (np.array([[1, 2], [3, 4]]), np.array([(0, 0),]), 0, {((1, 0),):1},  np.array([[1, 2], [4, 4]])),
+          (np.array([[1, 2], [3, 4]]), np.array([(0, 0),]), 0, {((0, 1),):1},  np.array([[1, 2], [3, 5]])),
+          (np.array([[1, 2], [3, 4]]), np.array([(0, 0),]), 1, {((1, 0),):1},  np.array([[2, 2], [3, 4]])),
+          (np.array([[1, 2], [3, 4]]), np.array([(0, 0),]), 1, {((0, 1),):1},  np.array([[1, 3], [3, 4]])),
+          (np.array([[1, 2], [3, 4]]), np.array([(2, 3),]), 0, {((1, 0),):1},  np.array([[3, 5], [4, 4]])),
+          (np.array([[1, 2], [3, 4]]), np.array([(2, 3),]), 0, {((0, 1),):1},  np.array([[3, 5], [3, 5]])),
+          (np.array([[1, 2], [3, 4]]), np.array([(2, 3),]), 1, {((1, 0),):1},  np.array([[2, 2], [5, 7]])),
+          (np.array([[1, 2], [3, 4]]), np.array([(2, 3),]), 1, {((0, 1),):1},  np.array([[1, 3], [5, 7]])))
+    @unpack
+    def testTransitionGivenOthersDeterminsticPolicyCentralControl(self, state, individualAction, selfId, othersActionDist, groundTruthReturnedNextState):
+        policy = lambda state: othersActionDist
+        otherPolicy = lambda state: [policy(state), policy(state)]
+        chooseAction = [sampleFromDistribution, sampleFromDistribution]
+        centralControlFlag = True
+        transitGivenOtherPolicy = TransitGivenOtherPolicy(selfId, self.transition, otherPolicy, chooseAction, centralControlFlag)
         nextState = transitGivenOtherPolicy(state, individualAction)
         truthValue = nextState == groundTruthReturnedNextState
         self.assertTrue(truthValue.all())

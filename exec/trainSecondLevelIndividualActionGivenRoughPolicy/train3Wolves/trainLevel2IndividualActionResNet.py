@@ -64,7 +64,7 @@ def trainOneCondition(manipulatedVariables):
     depth = int(manipulatedVariables['depth'])
     # Get dataset for training
     DIRNAME = os.path.dirname(__file__)
-    dataSetDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'trainLevel2IndividualActionPolicy', '2Wolves', 'trajectories')
+    dataSetDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'trainLevel2IndividualActionPolicy', '3Wolves', 'trajectories')
 
     if not os.path.exists(dataSetDirectory):
         os.makedirs(dataSetDirectory)
@@ -83,7 +83,7 @@ def trainOneCondition(manipulatedVariables):
     # MDP Env
     xBoundary = [0,600]
     yBoundary = [0,600]
-    numOfAgent = 3
+    numOfAgent = 4
     reset = Reset(xBoundary, yBoundary, numOfAgent)
     
     stayInBoundaryByReflectVelocity = StayInBoundaryByReflectVelocity(xBoundary, yBoundary)
@@ -181,7 +181,7 @@ def trainOneCondition(manipulatedVariables):
     # get path to save trained models
     NNModelFixedParameters = {'agentId': agentId, 'maxRunningSteps': dataSetMaxRunningSteps, 'numSimulations': dataSetNumSimulations, 'hierarchy': 2}
 
-    NNModelSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'trainLevel2IndividualActionPolicy', '2Wolves', 'trainedResNNModels')
+    NNModelSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'trainLevel2IndividualActionPolicy', '3Wolves', 'trainedResNNModels')
     if not os.path.exists(NNModelSaveDirectory):
         os.makedirs(NNModelSaveDirectory)
     NNModelSaveExtension = ''

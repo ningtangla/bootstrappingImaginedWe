@@ -43,7 +43,7 @@ def main():
 
     # check file exists or not
     dirName = os.path.dirname(__file__)
-    trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'trainLevel2IndividualActionPolicy', '2Wolves', 'trajectories')
+    trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'trainLevel2IndividualActionPolicy', '3Wolves', 'trajectories')
     if not os.path.exists(trajectoriesSaveDirectory):
         os.makedirs(trajectoriesSaveDirectory)
 
@@ -59,7 +59,7 @@ def main():
 
     if not os.path.isfile(trajectorySavePath):
 
-        numOfAgent = 3
+        numOfAgent = 4
         possiblePreyIds = [0]
         possiblePredatorIds = list(range(1, numOfAgent))
         posIndexInState = [0, 1]
@@ -101,7 +101,7 @@ def main():
 
         NNModelSaveExtension = ''
         NNModelSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'preTrainModel')
-        sheepNNModelFixedParameters = {'agentId': 0, 'maxRunningSteps': 50, 'numSimulations': 100, 'miniBatchSize': 256, 'learningRate': 0.0001, }
+        sheepNNModelFixedParameters = {'agentId': 0.3, 'maxRunningSteps': 50, 'numSimulations': 100, 'miniBatchSize': 256, 'learningRate': 0.0001, }
         getSheepNNModelSavePath = GetSavePath(NNModelSaveDirectory, NNModelSaveExtension, sheepNNModelFixedParameters)
         sheepTrainedModelPath = getSheepNNModelSavePath({'trainSteps': 50000, 'depth': depth})
 
@@ -111,7 +111,7 @@ def main():
         #wolves Rough Policy
         generateWolvesModel = GenerateModel(numStateSpace, numWolfCentralControlActionSpace, regularizationFactor)
         
-        wolvesRoughNNModelFixedParameters = {'agentId': 55, 'maxRunningSteps': 50, 'numSimulations': 200, 'miniBatchSize': 256, 'learningRate': 0.0001, }
+        wolvesRoughNNModelFixedParameters = {'agentId': 555, 'maxRunningSteps': 50, 'numSimulations': 200, 'miniBatchSize': 256, 'learningRate': 0.0001, }
         getWolvesRoughNNModelSavePath = GetSavePath(NNModelSaveDirectory, NNModelSaveExtension, wolvesRoughNNModelFixedParameters)
         wolvesRoughTrainedModelPath = getWolvesRoughNNModelSavePath({'trainSteps': 50000, 'depth': depth})
 
@@ -183,7 +183,7 @@ def main():
             import pygame as pg
             from pygame.color import THECOLORS
             screenColor = THECOLORS['black']
-            circleColorList = [THECOLORS['green'], THECOLORS['yellow'], THECOLORS['red']]
+            circleColorList = [THECOLORS['green'], THECOLORS['yellow'], THECOLORS['red'], THECOLORS['red']]
             circleSize = 10
 
             saveImage = False
@@ -198,6 +198,7 @@ def main():
         reset = Reset(xBoundary, yBoundary, numOfAgent)
         individualWolfId = 1
         centralControlActionIndex = 2
+        print(actionIndexesInCentralControl)
         transitInPlay = lambda state, action : transit(state, 
             np.concatenate([[np.array(action)[sheepId], np.array(action)[individualWolfId]],
                 np.array(action[centralControlActionIndex])[actionIndexesInCentralControl]]))
