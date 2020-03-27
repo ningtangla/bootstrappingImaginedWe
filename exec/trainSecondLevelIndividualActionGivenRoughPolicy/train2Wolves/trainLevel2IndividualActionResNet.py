@@ -27,7 +27,8 @@ from src.neuralNetwork.trainTools import CoefficientCotroller, TrainTerminalCont
 from src.replayBuffer import SampleBatchFromBuffer, SaveToBuffer
 from src.preProcessing import AccumulateRewards, AddValuesToTrajectory, RemoveTerminalTupleFromTrajectory, ActionToOneHot, ProcessTrajectoryForPolicyValueNet, PreProcessTrajectories
 from src.algorithms.mcts import ScoreChild, SelectChild, InitializeChildren, Expand, MCTS, backup, establishPlainActionDist
-from src.MDPChasing.reward import RewardFunctionCompete 
+from src.MDPChasing.reward import RewardFunctionCompete
+
 
 class TrainModelForConditions:
     def __init__(self, trainIntervelIndexes, trainStepsIntervel, trainData, NNModel, getTrain, getModelSavePath):
@@ -71,7 +72,7 @@ def trainOneCondition(manipulatedVariables):
 
     dataSetExtension = '.pickle'
     dataSetMaxRunningSteps = 50
-    dataSetNumSimulations = 250
+    dataSetNumSimulations = 200
     killzoneRadius = 80
     agentId = 1
     wolvesId = 1
@@ -81,11 +82,11 @@ def trainOneCondition(manipulatedVariables):
     print("DATASET LOADED!")
 
     # MDP Env
-    xBoundary = [0,600]
-    yBoundary = [0,600]
+    xBoundary = [0, 600]
+    yBoundary = [0, 600]
     numOfAgent = 3
     reset = Reset(xBoundary, yBoundary, numOfAgent)
-    
+
     stayInBoundaryByReflectVelocity = StayInBoundaryByReflectVelocity(xBoundary, yBoundary)
     transit = TransitForNoPhysics(stayInBoundaryByReflectVelocity)
 
@@ -120,7 +121,8 @@ def trainOneCondition(manipulatedVariables):
 
     actionIndex = 1
     actionToOneHot = ActionToOneHot(wolfActionSpace)
-    getTerminalActionFromTrajectory = lambda trajectory: trajectory[-1][actionIndex]
+
+    def getTerminalActionFromTrajectory(trajectory): return trajectory[-1][actionIndex]
     removeTerminalTupleFromTrajectory = RemoveTerminalTupleFromTrajectory(getTerminalActionFromTrajectory)
     processTrajectoryForNN = ProcessTrajectoryForPolicyValueNet(actionToOneHot, wolvesId)
 
@@ -131,7 +133,7 @@ def trainOneCondition(manipulatedVariables):
     loadedTrajectories = loadTrajectories(parameters={})
     # print(loadedTrajectories[0])
 
-    filterState = lambda timeStep: (timeStep[0][0:numOfAgent], timeStep[1], timeStep[2])  # !!? magic
+    def filterState(timeStep): return (timeStep[0][0:numOfAgent], timeStep[1], timeStep[2])  # !!? magic
     trajectories = [[filterState(timeStep) for timeStep in trajectory] for trajectory in loadedTrajectories]
     print(len(trajectories))
 
@@ -168,15 +170,18 @@ def trainOneCondition(manipulatedVariables):
     afterActionCoeff = 1
     afterValueCoeff = 1
     afterCoeff = (afterActionCoeff, afterValueCoeff)
-    terminalController = lambda evalDict, numSteps: False
+
+    def terminalController(evalDict, numSteps): return False
     coefficientController = CoefficientCotroller(initCoeff, afterCoeff)
     reportInterval = 10000
     trainStepsIntervel = 10000
     trainReporter = TrainReporter(trainStepsIntervel, reportInterval)
     learningRateDecay = 1
     learningRateDecayStep = 1
-    learningRateModifier = lambda learningRate: LearningRateModifier(learningRate, learningRateDecay, learningRateDecayStep)
-    getTrainNN = lambda batchSize, learningRate: Train(trainStepsIntervel, batchSize, sampleData, learningRateModifier(learningRate), terminalController, coefficientController, trainReporter)
+
+    def learningRateModifier(learningRate): return LearningRateModifier(learningRate, learningRateDecay, learningRateDecayStep)
+
+    def getTrainNN(batchSize, learningRate): return Train(trainStepsIntervel, batchSize, sampleData, learningRateModifier(learningRate), terminalController, coefficientController, trainReporter)
 
     # get path to save trained models
     NNModelFixedParameters = {'agentId': agentId, 'maxRunningSteps': dataSetMaxRunningSteps, 'numSimulations': dataSetNumSimulations, 'hierarchy': 2}
