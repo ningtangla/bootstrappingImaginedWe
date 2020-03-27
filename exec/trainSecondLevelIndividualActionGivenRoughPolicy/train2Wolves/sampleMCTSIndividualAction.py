@@ -26,12 +26,12 @@ from src.chooseFromDistribution import sampleFromDistribution, maxFromDistributi
 
 
 def main():
-    DEBUG = 0
-    renderOn = 0
+    DEBUG = 1
+    renderOn = 1
     if DEBUG:
         parametersForTrajectoryPath = {}
         startSampleIndex = 1
-        endSampleIndex = 6
+        endSampleIndex = 3
         agentId = 1
         parametersForTrajectoryPath['sampleIndex'] = (startSampleIndex, endSampleIndex)
     else:

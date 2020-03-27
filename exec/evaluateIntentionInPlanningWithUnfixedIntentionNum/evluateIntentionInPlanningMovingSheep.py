@@ -47,7 +47,7 @@ class SampleTrjactoriesForConditions:
 def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
-    manipulatedVariables['numIntentions'] = [2, 4]
+    manipulatedVariables['numIntentions'] = [2, 4, 8]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
     modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)
@@ -130,8 +130,8 @@ def main():
     # Joint Likelihood
     composeCalJointLikelihood = lambda calPolicyLikelihood, calActionPerceptionLikelihood: lambda intention, state, action, perceivedAction: \
         calPolicyLikelihood(intention, state, action) * calActionPerceptionLikelihood(action, perceivedAction)
-    getCalJointLikelihood = lambda numActionSpaceForOthers: [composeCalJointLikelihood(calPolicyLikelihood, calActionPerceptionLikelihood) 
-        for calPolicyLikelihood in composeCalPoliciesLikelihood(numActionSpaceForOthers)]
+    getCalJointLikelihood = lambda numIntentions: [composeCalJointLikelihood(calPolicyLikelihood, calActionPerceptionLikelihood) 
+        for calPolicyLikelihood in composeCalPoliciesLikelihood(numIntentions)]
 
     # Joint Hypothesis Space
     priorDecayRate = 1
@@ -174,8 +174,9 @@ def main():
 
     softParameterInPlanning = 2.5
     softPolicyInPlanning = SoftPolicy(softParameterInPlanning)
+    softenSheepCentralControlPolicyGivenIntentionInPlanning = lambda state: softPolicyInPlanning(sheepCentralControlPolicyGivenIntention(state))
     softenWolfCentralControlPolicyGivenIntentionInPlanning = lambda state: softPolicyInPlanning(wolfCentralControlPolicyGivenIntention(state))
-    getCentralControlPoliciesGivenIntentions = lambda numIntentions: [sheepCentralControlPolicyGivenIntention] * numIntentions + [softenWolfCentralControlPolicyGivenIntentionInPlanning, softenWolfCentralControlPolicyGivenIntentionInPlanning]
+    getCentralControlPoliciesGivenIntentions = lambda numIntentions: [softenSheepCentralControlPolicyGivenIntentionInPlanning] * numIntentions + [softenWolfCentralControlPolicyGivenIntentionInPlanning, softenWolfCentralControlPolicyGivenIntentionInPlanning]
     composeIndividualPoliciesByEvaParameters = lambda numIntentions: [PolicyOnChangableIntention(perceptAction, 
         imaginedWeIntentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention) 
             for perceptAction, imaginedWeIntentionPrior, getStateForPolicyGivenIntention, updateIntentionDistribution, policyGivenIntention 
@@ -221,7 +222,7 @@ def main():
     numTrajectories = 200
     sampleTrajectoriesForConditions = SampleTrjactoriesForConditions(numTrajectories, composeIndividualPoliciesByEvaParameters,
             composeSampleTrajectory, saveTrajectoryByParameters)
-    #[sampleTrajectoriesForConditions(para) for para in parametersAllCondtion]
+    [sampleTrajectoriesForConditions(para) for para in parametersAllCondtion]
 
     # Compute Statistics on the Trajectories
     loadTrajectories = LoadTrajectories(getTrajectorySavePath, loadFromPickle)

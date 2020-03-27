@@ -181,9 +181,10 @@ def main():
 
     softParameterInPlanning = 2.5
     softPolicyInPlanning = SoftPolicy(softParameterInPlanning)
+    softenSheepCentralControlPolicyGivenIntentionInPlanning = lambda state: softPolicyInPlanning(sheepCentralControlPolicyGivenIntention(state))
     getSoftenWolfCentralControlPolicyGivenIntentionInPlanning = lambda numActionSpaceForOthers: lambda state: softPolicyInPlanning(
             getWolfCentralControlPolicyGivenIntention(numActionSpaceForOthers)(state))
-    getCentralControlPoliciesGivenIntentions = lambda numActionSpaceForOthers: [sheepCentralControlPolicyGivenIntention, sheepCentralControlPolicyGivenIntention,
+    getCentralControlPoliciesGivenIntentions = lambda numActionSpaceForOthers: [softenSheepCentralControlPolicyGivenIntentionInPlanning, softenSheepCentralControlPolicyGivenIntentionInPlanning, 
             getSoftenWolfCentralControlPolicyGivenIntentionInPlanning(numActionSpaceForOthers), getSoftenWolfCentralControlPolicyGivenIntentionInPlanning(numActionSpaceForOthers)]
     composeIndividualPoliciesByEvaParameters = lambda numActionSpaceForOthers: [PolicyOnChangableIntention(perceptImaginedWeAction, 
         imaginedWeIntentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention) 

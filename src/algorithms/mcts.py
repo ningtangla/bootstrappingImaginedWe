@@ -12,12 +12,11 @@ class ScoreChild:
         selfVisitCount = child.numVisited
         actionPrior = child.actionPrior
 
+        explorationRate = np.log((1 + parentVisitCount + self.cBase) / self.cBase) + self.cInit
+        uScore = explorationRate * actionPrior * np.sqrt(parentVisitCount) / float(1 + selfVisitCount)
         if selfVisitCount == 0:
-            uScore = np.inf
             qScore = 0
         else:
-            explorationRate = np.log((1 + parentVisitCount + self.cBase) / self.cBase) + self.cInit
-            uScore = explorationRate * actionPrior * np.sqrt(parentVisitCount) / float(1 + selfVisitCount)
             qScore = child.sumValue / selfVisitCount
 
         score = qScore + uScore
