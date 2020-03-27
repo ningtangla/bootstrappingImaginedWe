@@ -96,7 +96,7 @@ class RollOut:
         return totalRewardForRollout
 
 
-def backup(value, nodeList): #anytree lib
+def backup(value, nodeList):  # anytree lib
     for node in nodeList:
         node.sumValue += value
         node.numVisited += 1
@@ -117,6 +117,7 @@ def establishSoftmaxActionDist(root):
     actions = [list(child.id.keys())[0] for child in root.children]
     actionDist = dict(zip(actions, actionProbs))
     return actionDist
+
 
 class MCTS:
     def __init__(self, numSimulation, selectChild, expand, estimateValue, backup, outputDistribution):
@@ -147,6 +148,7 @@ class MCTS:
         actionDistribution = self.outputDistribution(root)
         return actionDistribution
 
+
 def establishPlainActionDistFromMultipleTrees(roots):
     visits = np.sum([[child.numVisited for child in root.children] for root in roots], axis=0)
     actionProbs = visits / np.sum(visits)
@@ -162,6 +164,7 @@ def establishSoftmaxActionDistFromMultipleTrees(roots):
     actions = [list(child.id.keys())[0] for child in roots[0].children]
     actionDist = dict(zip(actions, actionProbs))
     return actionDist
+
 
 class StochasticMCTS:
     def __init__(self, numTree, numSimulation, selectChild, expand, estimateValue, backup, outputDistribution):
