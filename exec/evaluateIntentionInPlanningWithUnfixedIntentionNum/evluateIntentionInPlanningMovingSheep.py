@@ -43,11 +43,12 @@ class SampleTrjactoriesForConditions:
         policy = lambda state: [individualPolicy(state) for individualPolicy in individualPolicies]
         trajectories = [sampleTrajectory(policy) for trjaectoryIndex in range(self.numTrajectories)]       
         self.saveTrajectoryByParameters(trajectories, parameters)
+        print(np.mean([len(tra) for tra in trajectories]))
 
 def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
-    manipulatedVariables['numIntentions'] = [2, 4, 8]
+    manipulatedVariables['numIntentions'] = [2]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
     modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)
@@ -152,7 +153,7 @@ def main():
 
     #NN Policy Given Intention
     numStateSpace = 6
-    preyPowerRatio = 2.5
+    preyPowerRatio = 2.7
     sheepIndividualActionSpace = list(map(tuple, np.array(actionSpace) * preyPowerRatio))
     sheepCentralControlActionSpace = list(it.product(sheepIndividualActionSpace))
     numSheepActionSpace = len(sheepCentralControlActionSpace)
@@ -233,8 +234,8 @@ def main():
     statisticsDf = toSplitFrame.groupby(levelNames).apply(computeStatistics)
     fig = plt.figure()
     statisticsDf.index.name = 'Set Size of Intentions'
-    __import__('ipdb').set_trace()
-    ax = statisticsDf.plot(y = 'mean', yerr = 'se', ylim = (0, 0.5), label = '',  xlim = (21.95, 88.05), rot = 0)
+    #__import__('ipdb').set_trace()
+    ax = statisticsDf.plot(y = 'mean', yerr = 'se', ylim = (0, 0.5), label = '',  xlim = (1.95, 8.05), rot = 0)
     ax.set_ylabel('Accumulated Reward')
     #plt.suptitle('Wolves Accumulated Rewards')
     #plt.legend(loc='best')

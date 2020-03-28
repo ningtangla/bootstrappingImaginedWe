@@ -70,7 +70,7 @@ class SampleTrjactoriesForConditions:
             for weIdCopy, selfId in zip(imaginedWeIdCopys, list(range(numWolves)))]
         
         actionSpace = [(10, 0), (0, 10), (-10, 0), (0, -10), (0, 0)]
-        predatorPowerRatio = 2
+        predatorPowerRatio = 4
         wolfIndividualActionSpace = list(map(tuple, np.array(actionSpace) * predatorPowerRatio))
         mappingActionToAnotherSpace = MappingActionToAnotherSpace(wolfIndividualActionSpace)
         
@@ -143,7 +143,7 @@ class SampleTrjactoriesForConditions:
         #NN Policy Given Intention
         sheepActionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
                        (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
-        preyPowerRatio = 2.5
+        preyPowerRatio = 6
         sheepIndividualActionSpace = list(map(tuple, np.array(sheepActionSpace) * preyPowerRatio))
         numSheepActionSpace = len(sheepIndividualActionSpace)
         regularizationFactor = 1e-4
@@ -164,8 +164,7 @@ class SampleTrjactoriesForConditions:
 
         wolfLevel2ActionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
                        (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
-        preyPowerRatio = 2.5
-        wolfLevel2IndividualActionSpace = list(map(tuple, np.array(wolfLevel2ActionSpace) * preyPowerRatio))
+        wolfLevel2IndividualActionSpace = list(map(tuple, np.array(wolfLevel2ActionSpace) * predatorPowerRatio))
         numWolfLevel2ActionSpace = len(wolfLevel2IndividualActionSpace)
         regularizationFactor = 1e-4
         generatewolfLevel2Model = GenerateModel(numStateSpace, numWolfLevel2ActionSpace, regularizationFactor)
@@ -209,7 +208,7 @@ class SampleTrjactoriesForConditions:
         recordActionForPolicy = RecordValuesForPolicyAttributes(attributesToRecord, individualPolicies) 
         
         # Sample and Save Trajectory
-        maxRunningSteps = 100
+        maxRunningSteps = 104
         sampleTrajectory = SampleTrajectory(maxRunningSteps, transit, isTerminal,
                 reset, chooseAction, resetPolicy,
                 recordActionForPolicy)
@@ -224,7 +223,7 @@ class SampleTrjactoriesForConditions:
 def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
-    manipulatedVariables['numWolves'] = [2, 3]
+    manipulatedVariables['numWolves'] = [3]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
     modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)
@@ -243,7 +242,7 @@ def main():
     getTrajectorySavePath = lambda trajectoryFixedParameters: GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
     saveTrajectoryByParameters = lambda trajectories, trajectoryFixedParameters, parameters: saveToPickle(trajectories, getTrajectorySavePath(trajectoryFixedParameters)(parameters))
    
-    numTrajectories = 200
+    numTrajectories = 20
     sampleTrajectoriesForConditions = SampleTrjactoriesForConditions(numTrajectories, saveTrajectoryByParameters)
     [sampleTrajectoriesForConditions(para) for para in parametersAllCondtion]
     # Compute Statistics on the Trajectories

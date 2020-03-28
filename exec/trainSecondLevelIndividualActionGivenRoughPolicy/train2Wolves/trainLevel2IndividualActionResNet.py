@@ -71,7 +71,7 @@ def trainOneCondition(manipulatedVariables):
 
     dataSetExtension = '.pickle'
     dataSetMaxRunningSteps = 50
-    dataSetNumSimulations = 250
+    dataSetNumSimulations = 300
     killzoneRadius = 80
     agentId = 1
     wolvesId = 1
