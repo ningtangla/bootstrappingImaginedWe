@@ -1,9 +1,11 @@
 import numpy as np
 import random
-import copy 
+import copy
+
 
 def stationaryAgentPolicy(state):
     return {(0, 0): 1}
+
 
 class RandomPolicy:
     def __init__(self, actionSpace):
@@ -12,6 +14,7 @@ class RandomPolicy:
     def __call__(self, state):
         actionDist = {action: 1 / len(self.actionSpace) for action in self.actionSpace}
         return actionDist
+
 
 class HeatSeekingDiscreteDeterministicPolicy:
     def __init__(self, actionSpace, getPredatorPos, getPreyPos, computeAngleBetweenVectors):
@@ -48,8 +51,11 @@ class HeatSeekingContinuesDeterministicPolicy:
         actionDist = {actionTuple: 1}
         return actionDist
 
+
 class PolicyOnChangableIntention:
-    def __init__(self, perceptAction, intentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention):
+    def __init__(self, perceptAction, intentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention, planningInterval=1,
+                 intentionInferInterval=1, regulateCommitmentBroken=None, activeBreak=None, breakCommitmentPolicy=None, activateReCommit=None):
+        self.timeStep = 0
         self.lastState = None
         self.lastAction = None
         self.perceptAction = perceptAction
@@ -59,20 +65,52 @@ class PolicyOnChangableIntention:
         self.getStateForPolicyGivenIntention = getStateForPolicyGivenIntention
         self.policyGivenIntention = policyGivenIntention
         self.formerIntentionPriors = []
+        self.planningInterval = planningInterval
+        self.intentionInferInterval = intentionInferInterval
+        self.commitmentWarn = 0
+        self.warned = 0
+        self.committed = 1
+        self.regulateCommitmentBroken = regulateCommitmentBroken
+        self.activeBreak = activeBreak
+        self.breakCommitmentPolicy = breakCommitmentPolicy
+        self.activateReCommit = activateReCommit
 
     def __call__(self, state):
-        if not isinstance(self.lastState, type(None)):
+        if self.timeStep != 0:
             perceivedAction = self.perceptAction(self.lastAction)
+
+        if self.timeStep % self.intentionInferInterval == 0 and self.timeStep != 0 and self.isCommitted:
             intentionPosterior = self.updateIntentionDistribution(self.intentionPrior, self.lastState, perceivedAction)
         else:
             intentionPosterior = self.intentionPrior.copy()
+
         intentionId = self.chooseIntention(intentionPosterior)
         stateRelativeToIntention = self.getStateForPolicyGivenIntention(state, intentionId)
-        centralControlActionDist = self.policyGivenIntention(stateRelativeToIntention)
+
+        if self.timeStep % self.planningInterval == 0:
+            actionDist = self.policyGivenIntention(stateRelativeToIntention)
+        else:
+            selfAction = tuple([self.lastAction[id] for id in self.getStateForPolicyGivenIntention.agentSelfId])
+            actionDist = {tuple(selfAction): 1}
+
         self.lastState = state.copy()
         self.formerIntentionPriors.append(intentionPosterior.copy())
         self.intentionPrior = intentionPosterior.copy()
-        return centralControlActionDist
+
+        if not isinstance(self.regulateCommitmentBroken, type(None)):
+            self.commitmentWarn = self.regulateCommitmentBroken(self.lastState, perceivedAction, self.timeStep)
+
+        if not isinstance(activeBreak, type(None)):
+            self.isCommitted = activeBreak(self.timeStep)
+            if not self.isCommitted:
+                actionDist = self.breakCommitmentPolicy(state)
+
+        if not isinstance(self.activateReCommit, type(None)):
+            self.isCommitted = self.activateReEngage(self.warned)
+
+        self.timeStep = self.timeStep + 1
+        return actionDist
+
 
 class SoftPolicy:
     def __init__(self, softParameter):
@@ -85,27 +123,29 @@ class SoftPolicy:
         softenActionDist = dict(zip(actions, softenNormalizedProbabilities))
         return softenActionDist
 
+
 class RecordValuesForPolicyAttributes:
     def __init__(self, attributes, policyObjects):
         self.attributes = attributes
         self.policyObjects = policyObjects
-    
+
     def __call__(self, values):
-        [[setattr(policy, attribute, value) for attribute, value in zip(self.attributes, copy.deepcopy(values))] 
-                for policy in self.policyObjects]
+        [[setattr(policy, attribute, value) for attribute, value in zip(self.attributes, copy.deepcopy(values))]
+         for policy in self.policyObjects]
         return None
 
+
 class ResetPolicy:
-    def __init__(self, attributeValues, policyObjects, returnAttributes = None):
+    def __init__(self, attributeValues, policyObjects, returnAttributes=None):
         self.attributeValues = attributeValues
         self.policyObjects = policyObjects
         self.returnAttributes = returnAttributes
-    
+
     def __call__(self):
         returnAttributeValues = None
         if self.returnAttributes:
-            returnAttributeValues = list(zip(*[list(zip(*[getattr(individualPolicy, attribute).copy() for individualPolicy in self.policyObjects])) 
-                for attribute in self.returnAttributes]))
-        [[setattr(policy, attribute, value) for attribute, value in zip(list(attributeValue.keys()), copy.deepcopy(list(attributeValue.values())))] 
-                for policy, attributeValue in zip(self.policyObjects, self.attributeValues)]
+            returnAttributeValues = list(zip(*[list(zip(*[getattr(individualPolicy, attribute).copy() for individualPolicy in self.policyObjects]))
+                                               for attribute in self.returnAttributes]))
+        [[setattr(policy, attribute, value) for attribute, value in zip(list(attributeValue.keys()), copy.deepcopy(list(attributeValue.values())))]
+         for policy, attributeValue in zip(self.policyObjects, self.attributeValues)]
         return returnAttributeValues

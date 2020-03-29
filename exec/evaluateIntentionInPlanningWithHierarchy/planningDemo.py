@@ -33,24 +33,25 @@ def updateColorSpace(colorSpace, posterior, intentionSpace, imaginedWeIds):
 
 def main():
     DIRNAME = os.path.dirname(__file__)
-    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithNumIntentions',
+    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchy',
                                     'trajectories')
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)
     
-    maxRunningSteps = 100
+    maxRunningSteps = 99
     softParameterInPlanning = 2.5
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
+    hierarchy = 0 
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
-            'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps}
+            'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': hierarchy}
     trajectoryExtension = '.pickle'
     getTrajectorySavePath = GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
 
     # Compute Statistics on the Trajectories
     loadTrajectories = LoadTrajectories(getTrajectorySavePath, loadFromPickle)
-    numIntentions = 2
-    trajectoryParameters = {'numIntentions': numIntentions}
+    numWolves = 2
+    trajectoryParameters = {'numWolves': numWolves}
     trajectories = loadTrajectories(trajectoryParameters) 
     # generate demo image
     screenWidth = 600
@@ -64,11 +65,12 @@ def main():
     drawBackground = DrawBackground(screen, screenColor, xBoundary, yBoundary, lineColor, lineWidth)
     
     FPS = 40
-    circleColorSpace = [[100, 100, 100]]*numIntentions + [[255, 255, 255]] * 2
+    numSheep = 2
+    circleColorSpace = [[100, 100, 100]]*numSheep + [[255, 255, 255]] * numWolves
     circleSize = 10
     positionIndex = [0, 1]
-    agentIdsToDraw = list(range(numIntentions + 2))
-    saveImage = True
+    agentIdsToDraw = list(range(numSheep + numWolves))
+    saveImage = False
     imageSavePath = os.path.join(trajectoryDirectory, 'picMovingSheep')
     if not os.path.exists(imageSavePath):
         os.makedirs(imageSavePath)
@@ -76,8 +78,8 @@ def main():
     saveImageDir = os.path.join(os.path.join(imageSavePath, imageFolderName))
     if not os.path.exists(saveImageDir):
         os.makedirs(saveImageDir)
-    intentionSpace = list(it.product(range(numIntentions)))
-    imaginedWeIdsForInferenceSubject = [numIntentions, numIntentions + 1]
+    intentionSpace = list(it.product(range(numSheep)))
+    imaginedWeIdsForInferenceSubject = list(range(numSheep, numWolves + numSheep))
     softParameter = 0.1
     softFunction = SoftPolicy(softParameter)
     updateColorSpaceByPosterior = lambda colorSpace, posterior : updateColorSpace(
@@ -85,7 +87,7 @@ def main():
     
     #updateColorSpaceByPosterior = lambda originalColorSpace, posterior : originalColorSpace
     outsideCircleAgentIds = imaginedWeIdsForInferenceSubject
-    outsideCircleColor = np.array([[255, 0, 0]] * 2) 
+    outsideCircleColor = np.array([[255, 0, 0]] * numWolves)
     outsideCircleSize = 15 
     drawCircleOutside = DrawCircleOutside(screen, outsideCircleAgentIds, positionIndex, outsideCircleColor, outsideCircleSize)
     drawState = DrawState(FPS, screen, circleColorSpace, circleSize, agentIdsToDraw, positionIndex, 

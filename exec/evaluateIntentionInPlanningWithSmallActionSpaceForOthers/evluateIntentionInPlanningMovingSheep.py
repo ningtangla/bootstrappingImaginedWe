@@ -181,9 +181,10 @@ def main():
 
     softParameterInPlanning = 2.5
     softPolicyInPlanning = SoftPolicy(softParameterInPlanning)
+    softenSheepCentralControlPolicyGivenIntentionInPlanning = lambda state: softPolicyInPlanning(sheepCentralControlPolicyGivenIntention(state))
     getSoftenWolfCentralControlPolicyGivenIntentionInPlanning = lambda numActionSpaceForOthers: lambda state: softPolicyInPlanning(
             getWolfCentralControlPolicyGivenIntention(numActionSpaceForOthers)(state))
-    getCentralControlPoliciesGivenIntentions = lambda numActionSpaceForOthers: [sheepCentralControlPolicyGivenIntention, sheepCentralControlPolicyGivenIntention,
+    getCentralControlPoliciesGivenIntentions = lambda numActionSpaceForOthers: [softenSheepCentralControlPolicyGivenIntentionInPlanning, softenSheepCentralControlPolicyGivenIntentionInPlanning, 
             getSoftenWolfCentralControlPolicyGivenIntentionInPlanning(numActionSpaceForOthers), getSoftenWolfCentralControlPolicyGivenIntentionInPlanning(numActionSpaceForOthers)]
     composeIndividualPoliciesByEvaParameters = lambda numActionSpaceForOthers: [PolicyOnChangableIntention(perceptImaginedWeAction, 
         imaginedWeIntentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention) 
@@ -200,8 +201,8 @@ def main():
             for imaginedWeId, individualId in zip(imaginedWeIdsForAllAgents, individualIdsForAllAgents)]
     getIndividualActionMethods = [lambda centrolActionDist: assign(chooseAction(centrolActionDist)) for assign, chooseAction in zip(assignIndividualAction, chooseCentrolAction)]
     
-    policiesResetAttributes = ['lastAction', 'lastState', 'intentionPrior', 'formerIntentionPriors']
-    policiesResetAttributeValues = [dict(zip(policiesResetAttributes, [None, None, intentionPrior, [intentionPrior]])) for intentionPrior in imaginedWeIntentionPriors]
+    policiesResetAttributes = ['timeStep', 'lastAction', 'lastState', 'intentionPrior', 'formerIntentionPriors']
+    policiesResetAttributeValues = [dict(zip(policiesResetAttributes, [0, None, None, intentionPrior, [intentionPrior]])) for intentionPrior in imaginedWeIntentionPriors]
     returnAttributes = ['formerIntentionPriors']
     composeResetPolicy = lambda individualPolicies: ResetPolicy(policiesResetAttributeValues, individualPolicies, returnAttributes)
     attributesToRecord = ['lastAction']
