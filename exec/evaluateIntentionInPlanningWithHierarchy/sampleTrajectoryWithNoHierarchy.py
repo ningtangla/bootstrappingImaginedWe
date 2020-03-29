@@ -82,7 +82,7 @@ class SampleTrjactoriesForConditions:
         numStateSpace = 2 * (numSheep + numWolves - 1)
         actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
                        (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
-        predatorPowerRatio = 4
+        predatorPowerRatio = 2
         wolfIndividualActionSpace = list(map(tuple, np.array(actionSpace) * predatorPowerRatio))
         wolfCentralControlActionSpace = list(it.product(wolfIndividualActionSpace, repeat = numWolves))
         numWolvesActionSpace = len(wolfCentralControlActionSpace)
@@ -141,7 +141,7 @@ class SampleTrjactoriesForConditions:
         #NN Policy Given Intention
         sheepActionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
                        (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
-        preyPowerRatio = 5
+        preyPowerRatio = 3
         sheepIndividualActionSpace = list(map(tuple, np.array(sheepActionSpace) * preyPowerRatio))
         sheepCentralControlActionSpace = list(it.product(sheepIndividualActionSpace))
         numSheepActionSpace = len(sheepCentralControlActionSpace)
@@ -157,7 +157,7 @@ class SampleTrjactoriesForConditions:
         initSheepCentralControlModel = generateSheepCentralControlModel(sharedWidths * sheepNNDepth, actionLayerWidths, valueLayerWidths, 
                 resBlockSize, initializationMethod, dropoutRate)
         sheepModelPath = os.path.join('..', '..', 'data', 'preTrainModel',
-                'agentId=0.'+str(numWolves)+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=100_trainSteps=50000')
+                'agentId=0.'+str(numWolves)+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=150_trainSteps=50000')
         sheepCentralControlNNModel = restoreVariables(initSheepCentralControlModel, sheepModelPath)
         sheepCentralControlPolicyGivenIntention = ApproximatePolicy(sheepCentralControlNNModel, sheepCentralControlActionSpace)
 
@@ -166,8 +166,9 @@ class SampleTrjactoriesForConditions:
         softenSheepCentralControlPolicyGivenIntentionInPlanning = lambda state: softPolicyInPlanning(sheepCentralControlPolicyGivenIntention(state))
         softenWolfCentralControlPolicyGivenIntentionInPlanning = lambda state: softPolicyInPlanning(wolfCentralControlPolicyGivenIntention(state))
         centralControlPoliciesGivenIntentions = [softenSheepCentralControlPolicyGivenIntentionInPlanning] * numSheep + [softenWolfCentralControlPolicyGivenIntentionInPlanning] * numWolves
+        planningInterval = 3
         individualPolicies = [PolicyOnChangableIntention(perceptAction, 
-            imaginedWeIntentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention) 
+            imaginedWeIntentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention, planningInterval) 
                 for perceptAction, imaginedWeIntentionPrior, getStateForPolicyGivenIntention, updateIntentionDistribution, policyGivenIntention 
                 in zip(perceptActionForAll, imaginedWeIntentionPriors, getStateForPolicyGivenIntentions, 
                     updateIntention, centralControlPoliciesGivenIntentions)]
@@ -182,8 +183,8 @@ class SampleTrjactoriesForConditions:
         individualActionMethods = [lambda centrolActionDist: assign(chooseAction(centrolActionDist)) for assign, chooseAction in
                 zip(assignIndividualAction, chooseCentrolAction)]
 
-        policiesResetAttributes = ['lastState', 'lastAction', 'intentionPrior', 'formerIntentionPriors']
-        policiesResetAttributeValues = [dict(zip(policiesResetAttributes, [None, None, intentionPrior, [intentionPrior]])) for intentionPrior in
+        policiesResetAttributes = ['timeStep', 'lastState', 'lastAction', 'intentionPrior', 'formerIntentionPriors']
+        policiesResetAttributeValues = [dict(zip(policiesResetAttributes, [0, None, None, intentionPrior, [intentionPrior]])) for intentionPrior in
                 imaginedWeIntentionPriors]
         returnAttributes = ['formerIntentionPriors']
         resetPolicy = ResetPolicy(policiesResetAttributeValues, individualPolicies, returnAttributes)
@@ -191,7 +192,7 @@ class SampleTrjactoriesForConditions:
         recordActionForPolicy = RecordValuesForPolicyAttributes(attributesToRecord, individualPolicies) 
         
         # Sample and Save Trajectory
-        maxRunningSteps = 102
+        maxRunningSteps = 99
         sampleTrajectory = SampleTrajectory(maxRunningSteps, transit, isTerminal,
                 reset, individualActionMethods, resetPolicy,
                 recordActionForPolicy)

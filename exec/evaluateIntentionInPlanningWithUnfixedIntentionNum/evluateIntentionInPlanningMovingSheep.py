@@ -194,8 +194,8 @@ def main():
     composeGetIndividualActionMethods = lambda numIntentions: [lambda centrolActionDist: assign(chooseAction(centrolActionDist)) for assign, chooseAction in
             zip(composeAssignIndividualAction(numIntentions), composeChooseCentrolAction(numIntentions))]
 
-    policiesResetAttributes = ['lastState', 'lastAction', 'intentionPrior', 'formerIntentionPriors']
-    getPoliciesResetAttributeValues = lambda numIntentions: [dict(zip(policiesResetAttributes, [None, None, intentionPrior, [intentionPrior]])) for intentionPrior in
+    policiesResetAttributes = ['timeStep', 'lastState', 'lastAction', 'intentionPrior', 'formerIntentionPriors']
+    getPoliciesResetAttributeValues = lambda numIntentions: [dict(zip(policiesResetAttributes, [0, None, None, intentionPrior, [intentionPrior]])) for intentionPrior in
             getImaginedWeIntentionPriors(numIntentions)]
     returnAttributes = ['formerIntentionPriors']
     composeResetPolicy = lambda numIntentions, individualPolicies: ResetPolicy(getPoliciesResetAttributeValues(numIntentions), individualPolicies, returnAttributes)

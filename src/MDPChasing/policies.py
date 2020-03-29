@@ -49,7 +49,9 @@ class HeatSeekingContinuesDeterministicPolicy:
         return actionDist
 
 class PolicyOnChangableIntention:
-    def __init__(self, perceptAction, intentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention):
+    def __init__(self, perceptAction, intentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention, planningInterval = 1,
+            intentionInferInterval = 1, regulateCommitmentBroken = None, activeBreak = None, breakCommitmentPolicy = None, activateReCommit = None):
+        self.timeStep = 0
         self.lastState = None
         self.lastAction = None
         self.perceptAction = perceptAction
@@ -59,20 +61,51 @@ class PolicyOnChangableIntention:
         self.getStateForPolicyGivenIntention = getStateForPolicyGivenIntention
         self.policyGivenIntention = policyGivenIntention
         self.formerIntentionPriors = []
+        self.planningInterval = planningInterval
+        self.intentionInferInterval = intentionInferInterval
+        self.commitmentWarn = 0
+        self.warned = 0
+        self.committed = 1
+        self.regulateCommitmentBroken = regulateCommitmentBroken
+        self.activeBreak = activeBreak
+        self.breakCommitmentPolicy = breakCommitmentPolicy
+        self.activateReCommit = activateReCommit
 
     def __call__(self, state):
-        if not isinstance(self.lastState, type(None)):
+        if self.timeStep != 0:
             perceivedAction = self.perceptAction(self.lastAction)
+
+        if self.timeStep % self.intentionInferInterval == 0 and self.timeStep != 0 and self.isCommitted:
             intentionPosterior = self.updateIntentionDistribution(self.intentionPrior, self.lastState, perceivedAction)
         else:
             intentionPosterior = self.intentionPrior.copy()
+        
         intentionId = self.chooseIntention(intentionPosterior)
         stateRelativeToIntention = self.getStateForPolicyGivenIntention(state, intentionId)
-        centralControlActionDist = self.policyGivenIntention(stateRelativeToIntention)
+       
+        if self.timeStep % self.planningInterval == 0:
+            actionDist = self.policyGivenIntention(stateRelativeToIntention)
+        else:
+            selfAction = tuple([self.lastAction[id] for id in self.getStateForPolicyGivenIntention.agentSelfId])
+            actionDist = {tuple(selfAction): 1}
+
         self.lastState = state.copy()
         self.formerIntentionPriors.append(intentionPosterior.copy())
         self.intentionPrior = intentionPosterior.copy()
-        return centralControlActionDist
+        
+        if not isinstance(self.regulateCommitmentBroken, type(None)):
+            self.commitmentWarn = self.regulateCommitmentBroken(self.lastState, perceivedAction, self.timeStep)
+            
+        if not isinstance(activeBreak, type(None)) and :
+            self.isCommitted = activeBreak(self.timeStep)
+            if not self.isCommitted:
+                actionDist = self.breakCommitmentPolicy(state)
+        
+        if not isinstance(self.activateReCommit, type(None)):
+            self.isCommitted = self.activateReEngage(self.warned) 
+        
+        self.timeStep = self.timeStep + 1
+        return actionDist
 
 class SoftPolicy:
     def __init__(self, softParameter):
@@ -109,3 +142,4 @@ class ResetPolicy:
         [[setattr(policy, attribute, value) for attribute, value in zip(list(attributeValue.keys()), copy.deepcopy(list(attributeValue.values())))] 
                 for policy, attributeValue in zip(self.policyObjects, self.attributeValues)]
         return returnAttributeValues
+

@@ -48,7 +48,7 @@ def main():
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)
     
-    maxRunningSteps = 103
+    maxRunningSteps = 99
     softParameterInPlanning = 2.5
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'

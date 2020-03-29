@@ -199,8 +199,8 @@ class SampleTrjactoriesForConditions:
         wolfPolicyName = 'sampleNNPolicy'
         chooseAction = [actionChoiceMethods[sheepPolicyName]]* numSheep + [actionChoiceMethods[wolfPolicyName]]* numWolves
 
-        policiesResetAttributes = ['lastState', 'lastAction', 'intentionPrior', 'formerIntentionPriors']
-        policiesResetAttributeValues = [dict(zip(policiesResetAttributes, [None, None, intentionPrior, [intentionPrior]])) for intentionPrior in
+        policiesResetAttributes = ['timeStep', 'lastState', 'lastAction', 'intentionPrior', 'formerIntentionPriors']
+        policiesResetAttributeValues = [dict(zip(policiesResetAttributes, [0, None, None, intentionPrior, [intentionPrior]])) for intentionPrior in
                 imaginedWeIntentionPriors]
         returnAttributes = ['formerIntentionPriors']
         resetPolicy = ResetPolicy(policiesResetAttributeValues, individualPolicies, returnAttributes)

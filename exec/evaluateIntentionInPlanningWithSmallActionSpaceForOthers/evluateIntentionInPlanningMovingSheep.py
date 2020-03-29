@@ -201,8 +201,8 @@ def main():
             for imaginedWeId, individualId in zip(imaginedWeIdsForAllAgents, individualIdsForAllAgents)]
     getIndividualActionMethods = [lambda centrolActionDist: assign(chooseAction(centrolActionDist)) for assign, chooseAction in zip(assignIndividualAction, chooseCentrolAction)]
     
-    policiesResetAttributes = ['lastAction', 'lastState', 'intentionPrior', 'formerIntentionPriors']
-    policiesResetAttributeValues = [dict(zip(policiesResetAttributes, [None, None, intentionPrior, [intentionPrior]])) for intentionPrior in imaginedWeIntentionPriors]
+    policiesResetAttributes = ['timeStep', 'lastAction', 'lastState', 'intentionPrior', 'formerIntentionPriors']
+    policiesResetAttributeValues = [dict(zip(policiesResetAttributes, [0, None, None, intentionPrior, [intentionPrior]])) for intentionPrior in imaginedWeIntentionPriors]
     returnAttributes = ['formerIntentionPriors']
     composeResetPolicy = lambda individualPolicies: ResetPolicy(policiesResetAttributeValues, individualPolicies, returnAttributes)
     attributesToRecord = ['lastAction']

@@ -38,11 +38,11 @@ def main():
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)
     
-    maxRunningSteps = 100
+    maxRunningSteps = 99
     softParameterInPlanning = 2.5
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
-    hierarchy = 1
+    hierarchy = 0 
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
             'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': hierarchy}
     trajectoryExtension = '.pickle'

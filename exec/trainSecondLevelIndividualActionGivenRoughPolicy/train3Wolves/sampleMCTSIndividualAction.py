@@ -49,7 +49,7 @@ def main():
 
     trajectorySaveExtension = '.pickle'
     maxRunningSteps = 50
-    numSimulations = 250
+    numSimulations = 400
     killzoneRadius = 80
     fixedParameters = {'agentId': agentId, 'maxRunningSteps': maxRunningSteps, 'numSimulations': numSimulations, 'killzoneRadius': killzoneRadius}
 
@@ -111,7 +111,7 @@ def main():
         #wolves Rough Policy
         generateWolvesModel = GenerateModel(numStateSpace, numWolfCentralControlActionSpace, regularizationFactor)
         
-        wolvesRoughNNModelFixedParameters = {'agentId': 555, 'maxRunningSteps': 50, 'numSimulations': 200, 'miniBatchSize': 256, 'learningRate': 0.0001, }
+        wolvesRoughNNModelFixedParameters = {'agentId': 555, 'maxRunningSteps': 50, 'numSimulations': 300, 'miniBatchSize': 256, 'learningRate': 0.0001, }
         getWolvesRoughNNModelSavePath = GetSavePath(NNModelSaveDirectory, NNModelSaveExtension, wolvesRoughNNModelFixedParameters)
         wolvesRoughTrainedModelPath = getWolvesRoughNNModelSavePath({'trainSteps': 50000, 'depth': depth})
 
@@ -153,12 +153,13 @@ def main():
         expand = Expand(isTerminal, initializeChildren)
 
         # rollout
-        rolloutHeuristicWeight = 1e-3
+        rolloutHeuristicWeight = 1e-2
         sheepId = 0
         getSheepPos = GetAgentPosFromState(sheepId, posIndexInState)
         getWolvesPoses = [GetAgentPosFromState(wolfId, posIndexInState) for wolfId in range(1, numOfAgent)] 
         
-        rolloutHeuristics = [reward.HeuristicDistanceToTarget(rolloutHeuristicWeight, getWolfPos, getSheepPos)
+        minDistance = 400
+        rolloutHeuristics = [reward.HeuristicDistanceToTarget(rolloutHeuristicWeight, getWolfPos, getSheepPos, minDistance)
             for getWolfPos in getWolvesPoses]
 
         rolloutHeuristic = lambda state: np.mean([rolloutHeuristic(state) 
@@ -169,7 +170,7 @@ def main():
         transitInRollout = lambda state, individualAction : transit(state, np.concatenate([[maxFromDistribution(sheepPolicy(state)), individualAction],
             np.array(wolfCentralControlActionSpace[np.random.choice(range(numWolfCentralControlActionSpace))])[actionIndexesInCentralControl]]))
 
-        maxRolloutSteps = 10
+        maxRolloutSteps = 5
         rollout = RollOut(rolloutPolicy, maxRolloutSteps, transitInRollout, rewardFunction, isTerminal, rolloutHeuristic)
 
         wolfIndividualPolicy = MCTS(numSimulations, selectChild, expand, rollout, backup, establishSoftmaxActionDist)
