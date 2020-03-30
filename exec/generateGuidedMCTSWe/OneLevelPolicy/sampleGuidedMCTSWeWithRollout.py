@@ -1,10 +1,12 @@
+import time
 import sys
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-dirName = os.path.dirname(__file__)
-sys.path.append(os.path.join(dirName, '..', '..'))
+DIRNAME = os.path.dirname(__file__)
+sys.path.append(os.path.join(DIRNAME, '..', '..', '..'))
 
 import random
+import json
 import numpy as np
 import scipy.stats 
 import pickle
@@ -15,31 +17,65 @@ import itertools as it
 import pathos.multiprocessing as mp
 import math 
 
+from src.algorithms.mcts import ScoreChild, SelectChild, InitializeChildren, MCTS, backup, establishPlainActionDist, Expand, RollOut, establishSoftmaxActionDist
 from src.MDPChasing.state import GetAgentPosFromState, GetStateForPolicyGivenIntention
 from src.MDPChasing.policies import RandomPolicy, PolicyOnChangableIntention, SoftPolicy, RecordValuesForPolicyAttributes, ResetPolicy
-from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal
+from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal, InterpolateState
 from src.centralControl import AssignCentralControlToIndividual
-from src.trajectory import SampleTrajectory
+from src.trajectory import SampleTrajectory, SampleTrajectoryWithRender, Render
 from src.chooseFromDistribution import sampleFromDistribution, maxFromDistribution
 from src.trajectoriesSaveLoad import GetSavePath, readParametersFromDf, LoadTrajectories, SaveAllTrajectories, \
     GenerateAllSampleIndexSavePaths, saveToPickle, loadFromPickle
-from src.neuralNetwork.policyValueResNet import GenerateModel, ApproximatePolicy, restoreVariables
+from src.neuralNetwork.policyValueResNet import GenerateModel, ApproximatePolicy, restoreVariables, ApproximateValue
 from src.inference.percept import SampleNoisyAction, MappingActionToAnotherSpace, PerceptImaginedWeAction
 from src.inference.inference import CalPolicyLikelihood, InferOneStep, InferOnTrajectory
 from src.evaluation import ComputeStatistics
+from src.valueFromNode import EstimateValueFromNode
+from src.MDPChasing import reward
 
 def sortSelfIdFirst(weId, selfId):
     weId.insert(0, weId.pop(selfId))
     return weId
 
-class SampleTrjactoriesForConditions:
-    def __init__(self, numTrajectories, saveTrajectoryByParameters):
-        self.numTrajectories = numTrajectories
-        self.saveTrajectoryByParameters = saveTrajectoryByParameters
 
-    def __call__(self, parameters):
-        print(parameters)
-        numWolves = parameters['numWolves']
+def main():
+    DEBUG = 1
+    renderOn = 1
+    if DEBUG:
+        parametersForTrajectoryPath = {}
+        startSampleIndex = 0
+        endSampleIndex = 1
+        agentId = 1
+        parametersForTrajectoryPath['sampleIndex'] = (startSampleIndex, endSampleIndex)
+    else:
+        parametersForTrajectoryPath = json.loads(sys.argv[1])
+        startSampleIndex = int(sys.argv[2])
+        endSampleIndex = int(sys.argv[3])
+        agentId = int(parametersForTrajectoryPath['agentId'])
+        parametersForTrajectoryPath['sampleIndex'] = (startSampleIndex, endSampleIndex)
+
+    # check file exists or not
+    dirName = os.path.dirname(__file__)
+    trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRollout', 'OneLeveLPolicy', 'trajectories')
+    if not os.path.exists(trajectoriesSaveDirectory):
+        os.makedirs(trajectoriesSaveDirectory)
+
+    trajectorySaveExtension = '.pickle'
+    numOneWolfActionSpace = 9
+    NNNumSimulations = 300 #300 with distance Herustic; 200 without distanceHerustic
+    numWolves = 2
+    maxRunningSteps = 100
+    softParameterInPlanning = 2.5
+    sheepPolicyName = 'sampleNNPolicy'
+    wolfPolicyName = 'sampleNNPolicy'
+    trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
+            'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'numOneWolfActionSpace': numOneWolfActionSpace, 'numWolves': numWolves}
+            
+    generateTrajectorySavePath = GetSavePath(trajectoriesSaveDirectory, trajectorySaveExtension, trajectoryFixedParameters)
+    trajectorySavePath = generateTrajectorySavePath(parametersForTrajectoryPath)
+
+
+    if not os.path.isfile(trajectorySavePath):
         
         # MDP Env
         xBoundary = [0,600]
@@ -56,8 +92,8 @@ class SampleTrjactoriesForConditions:
         posIndexInState = [0, 1]
         getPreyPos = GetAgentPosFromState(possiblePreyIds, posIndexInState)
         getPredatorPos = GetAgentPosFromState(possiblePredatorIds, posIndexInState)
-        killzoneRadius = 30
-        isTerminal = IsTerminal(killzoneRadius, getPreyPos, getPredatorPos)
+        killzoneRadius = 50
+        isTerminalInPlay = IsTerminal(killzoneRadius, getPreyPos, getPredatorPos)
 
         # MDP Policy
         sheepImagindWeIntentionPrior = {tuple(range(numSheep, numSheep + numWolves)): 1}
@@ -82,7 +118,7 @@ class SampleTrjactoriesForConditions:
         numStateSpace = 2 * (numSheep + numWolves - 1)
         actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
                        (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
-        predatorPowerRatio = 2
+        predatorPowerRatio = 8
         wolfIndividualActionSpace = list(map(tuple, np.array(actionSpace) * predatorPowerRatio))
         wolfCentralControlActionSpace = list(it.product(wolfIndividualActionSpace, repeat = numWolves))
         numWolvesActionSpace = len(wolfCentralControlActionSpace)
@@ -97,8 +133,9 @@ class SampleTrjactoriesForConditions:
         initializationMethod = 'uniform'
         initWolfCentralControlModel = generateWolfCentralControlModel(sharedWidths * wolfNNDepth, actionLayerWidths, valueLayerWidths, 
                 resBlockSize, initializationMethod, dropoutRate)
-        wolfModelPath = os.path.join('..', '..', 'data', 'preTrainModel', 
-                'agentId='+str(9 * np.sum([10**_ for _ in range(numWolves)]))+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=300_trainSteps=50000')
+        wolfModelPath = os.path.join('..', '..', '..', 'data', 'preTrainModel', 
+                'agentId='+str(numOneWolfActionSpace * np.sum([10**_ for _ in
+                range(numWolves)]))+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations='+str(NNNumSimulations)+'_trainSteps=50000')
         wolfCentralControlNNModel = restoreVariables(initWolfCentralControlModel, wolfModelPath)
         wolfCentralControlPolicyGivenIntention = ApproximatePolicy(wolfCentralControlNNModel, wolfCentralControlActionSpace)
 
@@ -141,7 +178,7 @@ class SampleTrjactoriesForConditions:
         #NN Policy Given Intention
         sheepActionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
                        (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
-        preyPowerRatio = 3
+        preyPowerRatio = 12
         sheepIndividualActionSpace = list(map(tuple, np.array(sheepActionSpace) * preyPowerRatio))
         sheepCentralControlActionSpace = list(it.product(sheepIndividualActionSpace))
         numSheepActionSpace = len(sheepCentralControlActionSpace)
@@ -156,20 +193,71 @@ class SampleTrjactoriesForConditions:
         initializationMethod = 'uniform'
         initSheepCentralControlModel = generateSheepCentralControlModel(sharedWidths * sheepNNDepth, actionLayerWidths, valueLayerWidths, 
                 resBlockSize, initializationMethod, dropoutRate)
-        sheepModelPath = os.path.join('..', '..', 'data', 'preTrainModel',
+        sheepModelPath = os.path.join('..', '..', '..', 'data', 'preTrainModel',
                 'agentId=0.'+str(numWolves)+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=100_trainSteps=50000')
         sheepCentralControlNNModel = restoreVariables(initSheepCentralControlModel, sheepModelPath)
         sheepCentralControlPolicyGivenIntention = ApproximatePolicy(sheepCentralControlNNModel, sheepCentralControlActionSpace)
+ 
+	# MCTS
+        cInit = 1
+        cBase = 100
+        calculateScore = ScoreChild(cInit, cBase)
+        selectChild = SelectChild(calculateScore)
 
-        softParameterInPlanning = 2.5
+        # prior
+        getActionPrior = wolfCentralControlPolicyGivenIntention
+
+        # terminal and transit InMCTS
+        possiblePreyIdsInMCTS = [0]
+        possiblePredatorIdsInMCTS = list(range(1, numWolves + 1))
+        getPreyPosInMCTS = GetAgentPosFromState(possiblePreyIdsInMCTS, posIndexInState)
+        getPredatorPosInMCTS = GetAgentPosFromState(possiblePredatorIdsInMCTS, posIndexInState)
+        isTerminalInMCTS = IsTerminal(killzoneRadius, getPreyPosInMCTS, getPredatorPosInMCTS)
+        numFrameToInterpolate = 3
+        interpolateStateInMCTS = InterpolateState(3, transit, isTerminalInMCTS)
+        transitInMCTS = lambda state, wolfCentrolControlAction : interpolateStateInMCTS(state, np.concatenate([sampleFromDistribution(sheepCentralControlPolicyGivenIntention(state)),
+            wolfCentrolControlAction]))
+        
+        # initialize children; expand
+        initializeChildren = InitializeChildren(
+            wolfCentralControlActionSpace, transitInMCTS, getActionPrior)
+        expand = Expand(isTerminalInMCTS, initializeChildren)
+	
+        #Rollout Value
+        rolloutHeuristicWeight = 1e-2
+        sheepId = 0
+        getSheepPos = GetAgentPosFromState(sheepId, posIndexInState)
+        getWolvesPoses = [GetAgentPosFromState(wolfId, posIndexInState) for wolfId in range(1, numWolves + 1)] 
+        
+        minDistance = 400
+        rolloutHeuristics = [reward.HeuristicDistanceToTarget(rolloutHeuristicWeight, getWolfPos, getSheepPos, minDistance)
+            for getWolfPos in getWolvesPoses]
+
+        rolloutHeuristic = lambda state: np.mean([rolloutHeuristic(state) 
+            for rolloutHeuristic in rolloutHeuristics])
+
+        rolloutPolicy = lambda state: wolfCentralControlActionSpace[np.random.choice(range(numWolvesActionSpace))]
+        
+        aliveBonus = -1 / maxRunningSteps
+        deathPenalty = 1
+        rewardFunction = reward.RewardFunctionCompete(
+            aliveBonus, deathPenalty, isTerminalInMCTS)
+        
+        maxRolloutSteps = 5
+        rollout = RollOut(rolloutPolicy, maxRolloutSteps, transitInMCTS, rewardFunction, isTerminalInMCTS, rolloutHeuristic)
+         
+        numSimulations = 200
+        wolfCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulations, selectChild, expand, rollout, backup, establishPlainActionDist)
+
+	#final individual polices
         softPolicyInPlanning = SoftPolicy(softParameterInPlanning)
-        softSheepParameterInPlanning = 2.5
+        softSheepParameterInPlanning = softParameterInPlanning
         softSheepPolicyInPlanning = SoftPolicy(softSheepParameterInPlanning)
         softenSheepCentralControlPolicyGivenIntentionInPlanning = lambda state: softSheepPolicyInPlanning(sheepCentralControlPolicyGivenIntention(state))
-        softenWolfCentralControlPolicyGivenIntentionInPlanning = lambda state: softPolicyInPlanning(wolfCentralControlPolicyGivenIntention(state))
+        softenWolfCentralControlPolicyGivenIntentionInPlanning = lambda state: softPolicyInPlanning(wolfCentralControlGuidedMCTSPolicyGivenIntention(state))
         centralControlPoliciesGivenIntentions = [softenSheepCentralControlPolicyGivenIntentionInPlanning] * numSheep + [softenWolfCentralControlPolicyGivenIntentionInPlanning] * numWolves
-        planningIntervals = [4] * numSheep +  [4] * numWolves
-        intentionInferInterval = 4
+        planningIntervals = [1] * numSheep +  [1] * numWolves
+        intentionInferInterval = 1
         individualPolicies = [PolicyOnChangableIntention(perceptAction, 
             imaginedWeIntentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention, planningInterval, intentionInferInterval) 
                 for perceptAction, imaginedWeIntentionPrior, getStateForPolicyGivenIntention, updateIntentionDistribution, policyGivenIntention, planningInterval 
@@ -178,8 +266,6 @@ class SampleTrjactoriesForConditions:
 
         individualIdsForAllAgents = list(range(numWolves + numSheep))
         actionChoiceMethods = {'sampleNNPolicy': sampleFromDistribution, 'maxNNPolicy': maxFromDistribution}
-        sheepPolicyName = 'maxNNPolicy'
-        wolfPolicyName = 'sampleNNPolicy'
         chooseCentrolAction = [actionChoiceMethods[sheepPolicyName]]* numSheep + [actionChoiceMethods[wolfPolicyName]]* numWolves
         assignIndividualAction = [AssignCentralControlToIndividual(imaginedWeId, individualId) for imaginedWeId, individualId in
                 zip(imaginedWeIdsForAllAgents, individualIdsForAllAgents)]
@@ -195,57 +281,33 @@ class SampleTrjactoriesForConditions:
         recordActionForPolicy = RecordValuesForPolicyAttributes(attributesToRecord, individualPolicies) 
         
         # Sample and Save Trajectory
-        maxRunningSteps = 104 
-        sampleTrajectory = SampleTrajectory(maxRunningSteps, transit, isTerminal,
+        render = None
+        if renderOn:
+            import pygame as pg
+            from pygame.color import THECOLORS
+            screenColor = THECOLORS['black']
+            circleColorList = [THECOLORS['green'], THECOLORS['green'], THECOLORS['yellow'], THECOLORS['red']]
+            circleSize = 10
+
+            saveImage = False
+            saveImageDir = os.path.join(dirName, '..', '..', '..', 'data', 'demoImg')
+            if not os.path.exists(saveImageDir):
+                os.makedirs(saveImageDir)
+
+            screen = pg.display.set_mode([xBoundary[1], yBoundary[1]])
+            render = Render(numOfAgent, posIndexInState, screen, screenColor, circleColorList, circleSize, saveImage, saveImageDir)
+
+        interpolateStateInPlay = InterpolateState(4, transit, isTerminalInPlay)
+        transitInPlay = lambda state, action : interpolateStateInPlay(state, action)
+        sampleTrajectory = SampleTrajectoryWithRender(maxRunningSteps, transitInPlay, isTerminalInPlay,
                 reset, individualActionMethods, resetPolicy,
-                recordActionForPolicy)
+                recordActionForPolicy, render, renderOn)
         policy = lambda state: [individualPolicy(state) for individualPolicy in individualPolicies]
-        trajectories = [sampleTrajectory(policy) for trjaectoryIndex in range(self.numTrajectories)]       
         
-        trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
-            'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': 0}
-        self.saveTrajectoryByParameters(trajectories, trajectoryFixedParameters, parameters)
-        print(np.mean([len(tra) for tra in trajectories]))
+        trajectories = [sampleTrajectory(policy) for trjaectoryIndex in range(startSampleIndex, endSampleIndex)]       
+        saveToPickle(trajectories, trajectorySavePath)
+        print([len(traj) for traj in trajectories])
 
-def main():
-    # manipulated variables
-    manipulatedVariables = OrderedDict()
-    manipulatedVariables['numWolves'] = [2]
-    levelNames = list(manipulatedVariables.keys())
-    levelValues = list(manipulatedVariables.values())
-    modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)
-    toSplitFrame = pd.DataFrame(index=modelIndex)
-    productedValues = it.product(*[[(key, value) for value in values] for key, values in manipulatedVariables.items()])
-    parametersAllCondtion = [dict(list(specificValueParameter)) for specificValueParameter in productedValues]
-
-
-    DIRNAME = os.path.dirname(__file__)
-    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchy',
-                                    'trajectories')
-    if not os.path.exists(trajectoryDirectory):
-        os.makedirs(trajectoryDirectory)
-
-    trajectoryExtension = '.pickle'
-    getTrajectorySavePath = lambda trajectoryFixedParameters: GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
-    saveTrajectoryByParameters = lambda trajectories, trajectoryFixedParameters, parameters: saveToPickle(trajectories, getTrajectorySavePath(trajectoryFixedParameters)(parameters))
-   
-    numTrajectories = 100
-    sampleTrajectoriesForConditions = SampleTrjactoriesForConditions(numTrajectories, saveTrajectoryByParameters)
-    [sampleTrajectoriesForConditions(para) for para in parametersAllCondtion]
-    # Compute Statistics on the Trajectories
-    #loadTrajectories = LoadTrajectories(getTrajectorySavePath, loadFromPickle)
-    #loadTrajectoriesFromDf = lambda df: loadTrajectories(readParametersFromDf(df))
-    #
-    #measureIntentionArcheivement = lambda df: lambda trajectory: int(len(trajectory) < maxRunningSteps) - 1 / maxRunningSteps * len(trajectory)
-    #computeStatistics = ComputeStatistics(loadTrajectoriesFromDf, measureIntentionArcheivement)
-    #statisticsDf = toSplitFrame.groupby(levelNames).apply(computeStatistics)
-    #fig = plt.figure()
-    #statisticsDf.index.name = 'Set Size of Intentions'
-    #__import__('ipdb').set_trace()
-    #ax = statisticsDf.plot(y = 'mean', yerr = 'se', ylim = (0, 0.5), label = '',  xlim = (21.95, 88.05), rot = 0)
-    #ax.set_ylabel('Accumulated Reward')
-    #plt.legend(loc='best')
-    #plt.show()
 
 if __name__ == '__main__':
     main()

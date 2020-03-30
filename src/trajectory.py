@@ -9,8 +9,8 @@ class SampleTrajectory:
         self.isTerminal = isTerminal
         self.resetState = resetState
         self.chooseAction = chooseAction
-        self.resetPolicy = resetPolicy
-        self.recordActionForPolicy = recordActionForPolicy
+        self.resetpolicy = resetpolicy
+        self.recordactionforpolicy = recordactionforpolicy
 
     def __call__(self, policy):
 
@@ -70,15 +70,17 @@ class Render():
 
 
 class SampleTrajectoryWithRender:
-    def __init__(self, maxRunningSteps, transit, isTerminal, reset, chooseAction, render, renderOn):
+    def __init__(self, maxRunningSteps, transit, isTerminal, reset, chooseAction, resetPolicy = None, recordActionForPolicy = None, render = None, renderOn = False):
         self.maxRunningSteps = maxRunningSteps
         self.transit = transit
         self.isTerminal = isTerminal
         self.reset = reset
         self.chooseAction = chooseAction
+        self.runningStep = 0
+        self.resetPolicy = resetPolicy
+        self.recordActionForPolicy = recordActionForPolicy
         self.render = render
         self.renderOn = renderOn
-        self.runningStep = 0
 
     def __call__(self, policy):
         state = self.reset()
@@ -99,7 +101,15 @@ class SampleTrajectoryWithRender:
             trajectory.append((state, action, actionDists))
             nextState = self.transit(state, action)
             state = nextState
-
+            if self.recordActionForPolicy:
+                self.recordActionForPolicy([action])
+        
+        if self.resetPolicy:
+            policyAttributes = self.resetPolicy()
+            if policyAttributes:
+                trajectoryWithPolicyAttrVals = [tuple(list(stateActionPair) + list(policyAttribute)) 
+                        for stateActionPair, policyAttribute in zip(trajectory, policyAttributes)]
+                trajectory = trajectoryWithPolicyAttrVals.copy()
         return trajectory
 
 
