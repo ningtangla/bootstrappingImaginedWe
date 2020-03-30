@@ -13,15 +13,20 @@ from matplotlib import pyplot as plt
 
 from src.trajectoriesSaveLoad import GetSavePath, readParametersFromDf, LoadTrajectories, SaveAllTrajectories, \
     GenerateAllSampleIndexSavePaths, saveToPickle, loadFromPickle
+from src.MDPChasing.state import GetAgentPosFromState, GetStateForPolicyGivenIntention
+from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal, InterpolateState
+from src.preProcessing import AccumulateRewards, AddValuesToTrajectory, RemoveTerminalTupleFromTrajectory, ActionToOneHot, ProcessTrajectoryForPolicyValueNet, PreProcessTrajectories
+from src.MDPChasing.reward import RewardFunctionCompete
 
-# save evaluation trajectories
 if __name__ == '__main__':
     dirName = os.path.dirname(__file__)
     trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRollout', 'OneLeveLPolicy', 'trajectories')
     trajectorySaveExtension = '.pickle'
 
-    statList = []
-    NNNumSimulations = 200  # 300 with distance Herustic; 200 without distanceHerustic
+    trajLenList = []
+    accumulateRewardList = []
+
+    NNNumSimulations = 300  # 300 with distance Herustic; 200 without distanceHerustic
     for numOneWolfActionSpace in [5, 9]:
         numWolves = 2
         maxRunningSteps = 100
@@ -37,42 +42,53 @@ if __name__ == '__main__':
         loadTrajectories = LoadTrajectories(generateTrajectorySavePath, loadFromPickle, fuzzySearchParameterNames)
         loadedTrajectories = loadTrajectories({'agentId': 1})
 
+# traj length
         trajLen = np.mean([len(traj) for traj in loadedTrajectories])
-
         print(len(loadedTrajectories), trajLen)
-        statList.append(trajLen)
+        trajLenList.append(trajLen)
 
-        # sheepId = 0
-        # wolf1Id = 1
 
-        # xPosIndex = [0, 1]
-        # getSheepPos = GetAgentPosFromState(sheepId, xPosIndex)
-        # getWolf1Pos = GetAgentPosFromState(wolf1Id, xPosIndex)
+# accumulate reward
+        xBoundary = [0, 600]
+        yBoundary = [0, 600]
+        numSheep = 2
+        numWolves = 2
+        numOfAgent = numWolves + numSheep
+        reset = Reset(xBoundary, yBoundary, numOfAgent)
 
-        # playAliveBonus = 1/dataSetMaxRunningSteps
-        # playDeathPenalty = -1
-        # playKillzoneRadius = killzoneRadius #2
+        possiblePreyIds = list(range(numSheep))
+        possiblePredatorIds = list(range(numSheep, numSheep + numWolves))
+        posIndexInState = [0, 1]
+        getPreyPos = GetAgentPosFromState(possiblePreyIds, posIndexInState)
+        getPredatorPos = GetAgentPosFromState(possiblePredatorIds, posIndexInState)
+        killzoneRadius = 50
+        isTerminalInPlay = IsTerminal(killzoneRadius, getPreyPos, getPredatorPos)
 
-        # playIsTerminal = IsTerminal(playKillzoneRadius, getSheepPos, getWolf1Pos)
+        playAliveBonus = -1 / maxRunningSteps
+        playDeathPenalty = 1
+        playReward = RewardFunctionCompete(playAliveBonus, playDeathPenalty, isTerminalInPlay)
 
-        # playReward = RewardFunctionCompete(playAliveBonus, playDeathPenalty, playIsTerminal)
+        decay = 1
+        accumulateRewards = AccumulateRewards(decay, playReward)
+        addValuesToTrajectory = AddValuesToTrajectory(accumulateRewards)
 
-        # decay = 1
-        # accumulateRewards = AccumulateRewards(decay, playReward)
-        # addValuesToTrajectory = AddValuesToTrajectory(accumulateRewards)
+        def filterState(timeStep): return (timeStep[0][0:numOfAgent], timeStep[1], timeStep[2])
+        trajectories = [[filterState(timeStep) for timeStep in trajectory] for trajectory in loadedTrajectories]
 
-        # valuedTrajectories = [addValuesToTrajectory(tra) for tra in trajectories]
-        # dataMeanAccumulatedReward = np.mean([tra[0][3] for tra in valuedTrajectories])
-        # print(dataMeanAccumulatedReward)
+        valuedTrajectories = [addValuesToTrajectory(tra) for tra in trajectories]
+        dataMeanAccumulatedReward = np.mean([tra[0][3] for tra in valuedTrajectories])
+        print(dataMeanAccumulatedReward)
+        accumulateRewardList.append(dataMeanAccumulatedReward)
 
+# plot
     fig = plt.figure()
     axForDraw = fig.add_subplot(1, 1, 1)
-    axForDraw.set_ylim(0, 50)
+    axForDraw.set_ylim(0, 1)
 
     xlabel = ['5*5Wolves', '9*9Wolves', ]
 
     x = np.arange(2)
-    a = statList
+    a = accumulateRewardList
 
     totalWidth, n = 0.6, 2
     width = totalWidth / n
