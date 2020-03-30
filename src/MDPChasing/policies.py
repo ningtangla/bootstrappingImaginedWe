@@ -52,6 +52,30 @@ class HeatSeekingContinuesDeterministicPolicy:
         return actionDist
 
 
+class HeatSeekingDiscreteStochasticPolicy:
+    def __init__(self, rationalityParam, actHeatSeeking, getPredatorPos, getPreyPos):
+        self.rationalityParam = rationalityParam
+        self.actHeatSeeking = actHeatSeeking
+        self.getPredatorPos = getPredatorPos
+        self.getPreyPos = getPreyPos
+
+    def __call__(self, state):
+        predatorPosition = self.getPredatorPos(state)
+        preyPosition = self.getPreyPos(state)
+
+        heatSeekingDirection = np.array(preyPosition) - np.array(predatorPosition)
+        chosenActions, unchosenActions = self.actHeatSeeking(heatSeekingDirection)
+
+        chosenActionsLikelihood = {action: self.rationalityParam / len(chosenActions) for action in chosenActions}
+        unchosenActionsLikelihood = {action: (1 - self.rationalityParam) / len(unchosenActions) for action in unchosenActions}
+
+        heatSeekingActionLikelihood = {**chosenActionsLikelihood, **unchosenActionsLikelihood}
+        heatSeekingSampleLikelihood = list(heatSeekingActionLikelihood.values())
+        heatSeekingActionIndex = list(np.random.multinomial(1, heatSeekingSampleLikelihood)).index(1)
+        chasingAction = list(heatSeekingActionLikelihood.keys())[heatSeekingActionIndex]
+        return chasingAction
+
+
 class PolicyOnChangableIntention:
     def __init__(self, perceptAction, intentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention, planningInterval=1,
                  intentionInferInterval=1, regulateCommitmentBroken=None, activeBreak=None, breakCommitmentPolicy=None, activateReCommit=None):
@@ -79,7 +103,7 @@ class PolicyOnChangableIntention:
         if self.timeStep != 0:
             perceivedAction = self.perceptAction(self.lastAction)
 
-        if self.timeStep % self.intentionInferInterval == 0 and self.timeStep != 0 and self.isCommitted:
+        if self.timeStep % self.intentionInferInterval == 0 and self.timeStep != 0 and self.committed:
             intentionPosterior = self.updateIntentionDistribution(self.intentionPrior, self.lastState, perceivedAction)
         else:
             intentionPosterior = self.intentionPrior.copy()
@@ -100,13 +124,13 @@ class PolicyOnChangableIntention:
         if not isinstance(self.regulateCommitmentBroken, type(None)):
             self.commitmentWarn = self.regulateCommitmentBroken(self.lastState, perceivedAction, self.timeStep)
 
-        if not isinstance(activeBreak, type(None)):
-            self.isCommitted = activeBreak(self.timeStep)
-            if not self.isCommitted:
+        if not isinstance(self.activeBreak, type(None)):
+            self.committed = activeBreak(self.timeStep)
+            if not self.committed:
                 actionDist = self.breakCommitmentPolicy(state)
 
         if not isinstance(self.activateReCommit, type(None)):
-            self.isCommitted = self.activateReEngage(self.warned)
+            committed = self.activateReEngage(self.committed, self.warned)
 
         self.timeStep = self.timeStep + 1
         return actionDist

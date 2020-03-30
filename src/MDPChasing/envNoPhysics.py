@@ -54,6 +54,21 @@ class TransitGivenOtherPolicy():
         newState = self.transition(state, individualActions)
         return newState
 
+class InterpolateState:
+    def __init__(self, numFramesToInterpolate, transite, isTerminal):
+        self.numFramesToInterpolate = numFramesToInterpolate
+        self.transite = transite
+        self.isTerminal = isTerminal
+
+    def __call__(self, state, action):
+        actionForInterpolation = np.array(action) / (self.numFramesToInterpolate + 1)
+        for frameIndex in range(self.numFramesToInterpolate + 1):
+            nextState = self.transite(state, actionForInterpolation)
+            if self.isTerminal(nextState):
+                break
+            state = nextState
+        return nextState
+
 class IsTerminal():
     def __init__(self, minDistance, getPreyPos, getPredatorPos):
         self.minDistance = minDistance

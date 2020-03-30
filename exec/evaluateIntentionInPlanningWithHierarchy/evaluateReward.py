@@ -33,7 +33,7 @@ def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
     manipulatedVariables['numWolves'] = [2]
-    manipulatedVariables['hierarchy'] = [0, 1]
+    manipulatedVariables['hierarchy'] = [0, 1, 2]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
     modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)
@@ -48,7 +48,7 @@ def main():
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)
     
-    maxRunningSteps = 99
+    maxRunningSteps = 102
     softParameterInPlanning = 2.5
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
@@ -78,7 +78,7 @@ def main():
         
         group.index = group.index.droplevel('numWolves')
         group.index.name = 'Hierarchy'
-        group.plot.line(ax = axForDraw, y = 'mean', yerr = 'se', label = '', xlim = (-0.9, 2.1), ylim = (-0.2, 0.5), marker = 'o', rot = 0 )
+        group.plot.line(ax = axForDraw, y = 'mean', yerr = 'se', label = '', xlim = (-0.1, 2.1), ylim = (-0.2, 0.4), marker = 'o', rot = 0 )
         plotCounter = plotCounter + 1
 
     #plt.suptitle('Wolves Accumulated Reward')

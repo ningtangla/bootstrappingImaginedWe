@@ -38,11 +38,11 @@ def main():
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)
     
-    maxRunningSteps = 99
+    maxRunningSteps = 104
     softParameterInPlanning = 2.5
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
-    hierarchy = 0 
+    hierarchy = 0
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
             'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': hierarchy}
     trajectoryExtension = '.pickle'
@@ -64,7 +64,7 @@ def main():
     lineWidth = 4
     drawBackground = DrawBackground(screen, screenColor, xBoundary, yBoundary, lineColor, lineWidth)
     
-    FPS = 40
+    FPS = 30
     numSheep = 2
     circleColorSpace = [[100, 100, 100]]*numSheep + [[255, 255, 255]] * numWolves
     circleSize = 10
@@ -80,7 +80,7 @@ def main():
         os.makedirs(saveImageDir)
     intentionSpace = list(it.product(range(numSheep)))
     imaginedWeIdsForInferenceSubject = list(range(numSheep, numWolves + numSheep))
-    softParameter = 0.1
+    softParameter = 0.91
     softFunction = SoftPolicy(softParameter)
     updateColorSpaceByPosterior = lambda colorSpace, posterior : updateColorSpace(
             colorSpace, [softFunction(individualPosterior) for individualPosterior in posterior], intentionSpace, imaginedWeIdsForInferenceSubject)
@@ -107,6 +107,11 @@ def main():
     chaseTrial = ChaseTrialWithTraj(stateIndexInTimeStep, drawState, interpolateState, actionIndexInTimeStep, posteriorIndexInTimeStep)
    
     print(len(trajectories))
+    print(trajectories[0][0])
+    print(trajectories[0][1])
+    print(trajectories[0][2])
+    print(trajectories[0][3])
+    print(trajectories[0][4])
     [chaseTrial(trajectory) for trajectory in np.array(trajectories)[0:]]
     #[24 for 8intentions]
 if __name__ == '__main__':
