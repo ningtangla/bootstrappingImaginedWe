@@ -39,12 +39,12 @@ def sortSelfIdFirst(weId, selfId):
 
 
 def main():
-    DEBUG = 0
+    DEBUG = 1
     renderOn = 0
     if DEBUG:
         parametersForTrajectoryPath = {}
         startSampleIndex = 0
-        endSampleIndex = 1
+        endSampleIndex = 7
         agentId = 1
         parametersForTrajectoryPath['sampleIndex'] = (startSampleIndex, endSampleIndex)
     else:
@@ -64,7 +64,7 @@ def main():
     numOneWolfActionSpace = 5
     NNNumSimulations = 200 #300 with distance Herustic; 200 without distanceHerustic
     numWolves = 2
-    maxRunningSteps = 100
+    maxRunningSteps = 101
     softParameterInPlanning = 2.5
     sheepPolicyName = 'sampleNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
@@ -247,7 +247,7 @@ def main():
         maxRolloutSteps = 5
         rollout = RollOut(rolloutPolicy, maxRolloutSteps, transitInMCTS, rewardFunction, isTerminalInMCTS, rolloutHeuristic)
 
-        numSimulations = 200
+        numSimulations = 100
         wolfCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulations, selectChild, expand, rollout, backup, establishPlainActionDist)
 
 	#final individual polices
@@ -298,7 +298,7 @@ def main():
             screen = pg.display.set_mode([xBoundary[1], yBoundary[1]])
             render = Render(numOfAgent, posIndexInState, screen, screenColor, circleColorList, circleSize, saveImage, saveImageDir)
 
-        interpolateStateInPlay = InterpolateState(4, transit, isTerminalInPlay)
+        interpolateStateInPlay = InterpolateState(3, transit, isTerminalInPlay)
         transitInPlay = lambda state, action : interpolateStateInPlay(state, action)
         sampleTrajectory = SampleTrajectoryWithRender(maxRunningSteps, transitInPlay, isTerminalInPlay,
                 reset, individualActionMethods, resetPolicy,
