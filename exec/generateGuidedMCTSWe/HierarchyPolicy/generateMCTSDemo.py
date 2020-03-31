@@ -594,3 +594,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+# ffmpeg -r 120 -f image2 -s 1920x1080 -i  %0d.png -vcodec libx264 -crf 25  -pix_fmt yuv420p ~/ModellingJointInferenceOfPhysicsAndMind/data/demo/demo.mp4
