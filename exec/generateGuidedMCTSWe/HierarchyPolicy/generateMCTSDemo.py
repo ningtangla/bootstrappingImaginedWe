@@ -24,7 +24,7 @@ from src.MDPChasing.state import GetAgentPosFromState, GetStateForPolicyGivenInt
 from src.MDPChasing.policies import RandomPolicy, PolicyOnChangableIntention, SoftPolicy, RecordValuesForPolicyAttributes, ResetPolicy
 from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal, InterpolateState
 from src.centralControl import AssignCentralControlToIndividual
-from src.trajectory import SampleTrajectory, SampleTrajectoryWithRender, Render
+from src.trajectory import SampleTrajectory, SampleTrajectoryWithRender
 from src.chooseFromDistribution import sampleFromDistribution, maxFromDistribution
 from src.trajectoriesSaveLoad import GetSavePath, readParametersFromDf, LoadTrajectories, SaveAllTrajectories, \
     GenerateAllSampleIndexSavePaths, saveToPickle, loadFromPickle
@@ -104,7 +104,7 @@ class MCTSRender():
         if not os.path.exists(self.saveImageDir):
             os.makedirs(self.saveImageDir)
 
-        lineWidth = math.ceil(0.3 * (nextNode.numVisited + 1))
+        lineWidth = math.ceil(0.1 * (nextNode.numVisited + 1))
         surfaceToDraw = pg.Surface((self.surfaceWidth, self.surfaceHeight))
         surfaceToDraw.fill(self.screenColor)
         if backgroundScreen == None:
@@ -131,6 +131,10 @@ class MCTSRender():
                 oneAgentNextPosition = np.array(nextPoses[i])
                 if i != 0:  # draw mcts line for wolves
                     pg.draw.line(surfaceToDraw, self.mctsLineColor, [np.int(oneAgentPosition[0]), np.int(oneAgentPosition[1])], [np.int(oneAgentNextPosition[0]), np.int(oneAgentNextPosition[1])], lineWidth)
+                if i == 1:
+                    agentPos = [np.int(np.array(nextPoses[1])[0]), np.int(np.array(nextPoses[1])[1])]
+                    pg.draw.circle(surfaceToDraw, [255, 255, 255], agentPos, 8)
+
                 pg.draw.circle(surfaceToDraw, self.circleColorList[i], [np.int(oneAgentNextPosition[0]), np.int(oneAgentNextPosition[1])], self.circleSize)
 
             self.screen.blit(surfaceToDraw, (0, 0))
@@ -206,15 +210,31 @@ class DrawState():
 
     def __call__(self, state, circleColorList):
         self.drawBackGround()
-
         for agentIndex in range(self.numOfAgent):
             agentPos = [np.int(state[agentIndex][self.xIndex]), np.int(state[agentIndex][self.yIndex])]
             agentColor = circleColorList[agentIndex]
             pg.draw.circle(self.screen, agentColor, agentPos, self.circleSize)
+
         pg.display.flip()
         pg.time.wait(10)
 
         return self.screen
+
+
+class DrawCircleOutside:
+    def __init__(self, screen, outsideCircleAgentIds, positionIndex, circleColors, circleSize):
+        self.screen = screen
+        self.outsideCircleAgentIds = outsideCircleAgentIds
+        self.xIndex, self.yIndex = positionIndex
+        self.circleColors = circleColors
+        self.circleSize = circleSize
+
+    def __call__(self, state):
+        for agentIndex in self.outsideCircleAgentIds:
+            agentPos = [np.int(state[agentIndex][self.xIndex]), np.int(state[agentIndex][self.yIndex])]
+            agentColor = tuple(self.circleColors[list(self.outsideCircleAgentIds).index(agentIndex)])
+            pg.draw.circle(self.screen, agentColor, agentPos, self.circleSize)
+        return
 
 
 class ScalePos:
@@ -248,7 +268,7 @@ def main():
     if DEBUG:
         parametersForTrajectoryPath = {}
         startSampleIndex = 0
-        endSampleIndex = 7
+        endSampleIndex = 2
         agentId = 1
         parametersForTrajectoryPath['sampleIndex'] = (startSampleIndex, endSampleIndex)
     else:
@@ -271,7 +291,7 @@ def main():
     maxRunningSteps = 101
     softParameterInPlanning = 2.5
     sheepPolicyName = 'sampleNNPolicy'
-    wolfPolicyName = 'sampleNNPolicy'
+    wolfPolicyName = 'maxNNPolicy'
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
                                  'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'numOneWolfActionSpace': numOneWolfActionSpace, 'numWolves': numWolves}
 
@@ -481,8 +501,8 @@ def main():
 
         import pygame as pg
         from pygame.color import THECOLORS
-        screenWidth = 800
-        screenHeight = 800
+        screenWidth = 600
+        screenHeight = 600
 
         screen = pg.display.set_mode([xBoundary[1], yBoundary[1]])
         leaveEdgeSpace = 195
@@ -496,18 +516,21 @@ def main():
         posIndex = [0, 1]
         drawBackground = DrawBackground(screen, screenColor, xBoundary, yBoundary, lineColor, lineWidth)
         numOfAgentInMCTS = numOfAgent - 1
-        drawStateWithRope = DrawState(screen, circleSize, numOfAgentInMCTS, posIndex, drawBackground)
+
+        outsideCircleSize = 15
+        outsideCircleColor = np.array([[255, 0, 0]] * numWolves)
+        drawState = DrawState(screen, circleSize, numOfAgentInMCTS, posIndex, drawBackground)
 
         screenColor = THECOLORS['black']
-        circleColorListInMCTS = [THECOLORS['green'], THECOLORS['yellow'], THECOLORS['red']]
+        circleColorListInMCTS = [THECOLORS['green'], THECOLORS['red'], THECOLORS['red']]
         mctsLineColor = np.array([240, 240, 240, 180])
         circleSizeForMCTS = int(0.6 * circleSize)
 
         circleSize = 10
-        rawXRange = [0, 800]
-        rawYRange = [0, 800]
-        scaledXRange = [200, 600]
-        scaledYRange = [200, 600]
+        rawXRange = [0, 600]
+        rawYRange = [0, 600]
+        scaledXRange = [0, 600]
+        scaledYRange = [0, 600]
         scalePos = ScalePos(posIndex, rawXRange, rawYRange, scaledXRange, scaledYRange)
 
         saveImage = True
@@ -516,7 +539,7 @@ def main():
             os.makedirs(saveImageDir)
 
         mctsRenderOn = True
-        mctsRender = MCTSRender(numOfAgentInMCTS, screen, screenWidth, screenHeight, screenColor, circleColorListInMCTS, mctsLineColor, circleSizeForMCTS, saveImage, saveImageDir, drawStateWithRope, scalePos)
+        mctsRender = MCTSRender(numOfAgentInMCTS, screen, screenWidth, screenHeight, screenColor, circleColorListInMCTS, mctsLineColor, circleSizeForMCTS, saveImage, saveImageDir, drawState, scalePos)
 
         numSimulations = 100
         wolfLevel2GuidedMCTSPolicyGivenIntention = MCTS(numSimulations, selectChild, expand, rollout, backup, establishPlainActionDist, mctsRender, mctsRenderOn)
@@ -555,7 +578,7 @@ def main():
         # Sample and Save Trajectory
         render = None
         if renderOn:
-            circleColorList = [THECOLORS['green'], THECOLORS['green'], THECOLORS['yellow'], THECOLORS['red']]
+            circleColorList = [THECOLORS['green'], THECOLORS['green'], THECOLORS['red'], THECOLORS['red']]
             render = Render(numOfAgent, posIndexInState, screen, screenColor, circleColorList, circleSize, saveImage, saveImageDir)
 
         interpolateStateInPlay = InterpolateState(3, transit, isTerminalInPlay)
