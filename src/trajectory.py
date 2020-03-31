@@ -1,9 +1,11 @@
 import numpy as np
 import random
 import pygame as pg
+import os
+
 
 class SampleTrajectory:
-    def __init__(self, maxRunningSteps, transit, isTerminal, resetState, chooseAction, resetPolicy = None, recordActionForPolicy = None):
+    def __init__(self, maxRunningSteps, transit, isTerminal, resetState, chooseAction, resetPolicy=None, recordActionForPolicy=None):
         self.maxRunningSteps = maxRunningSteps
         self.transit = transit
         self.isTerminal = isTerminal
@@ -30,14 +32,15 @@ class SampleTrajectory:
             state = nextState
             if self.recordActionForPolicy:
                 self.recordActionForPolicy([action])
-        
+
         if self.resetPolicy:
             policyAttributes = self.resetPolicy()
             if policyAttributes:
-                trajectoryWithPolicyAttrVals = [tuple(list(stateActionPair) + list(policyAttribute)) 
-                        for stateActionPair, policyAttribute in zip(trajectory, policyAttributes)]
+                trajectoryWithPolicyAttrVals = [tuple(list(stateActionPair) + list(policyAttribute))
+                                                for stateActionPair, policyAttribute in zip(trajectory, policyAttributes)]
                 trajectory = trajectoryWithPolicyAttrVals.copy()
         return trajectory
+
 
 class Render():
     def __init__(self, numOfAgent, posIndex, screen, screenColor, circleColorList, circleSize, saveImage, saveImageDir):
@@ -70,7 +73,7 @@ class Render():
 
 
 class SampleTrajectoryWithRender:
-    def __init__(self, maxRunningSteps, transit, isTerminal, reset, chooseAction, resetPolicy = None, recordActionForPolicy = None, render = None, renderOn = False):
+    def __init__(self, maxRunningSteps, transit, isTerminal, reset, chooseAction, resetPolicy=None, recordActionForPolicy=None, render=None, renderOn=False):
         self.maxRunningSteps = maxRunningSteps
         self.transit = transit
         self.isTerminal = isTerminal
@@ -103,13 +106,11 @@ class SampleTrajectoryWithRender:
             state = nextState
             if self.recordActionForPolicy:
                 self.recordActionForPolicy([action])
-        
+
         if self.resetPolicy:
             policyAttributes = self.resetPolicy()
             if policyAttributes:
-                trajectoryWithPolicyAttrVals = [tuple(list(stateActionPair) + list(policyAttribute)) 
-                        for stateActionPair, policyAttribute in zip(trajectory, policyAttributes)]
+                trajectoryWithPolicyAttrVals = [tuple(list(stateActionPair) + list(policyAttribute))
+                                                for stateActionPair, policyAttribute in zip(trajectory, policyAttributes)]
                 trajectory = trajectoryWithPolicyAttrVals.copy()
         return trajectory
-
-
