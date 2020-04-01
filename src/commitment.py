@@ -10,12 +10,12 @@ class RegulateCommitmentBroken:
         self.commitmentInferInterval = commitmentInferInterval
 
     def __call__(self, state, perceivedAction, timeStep):
-        if self.timeStep % self.partnerCommitmentInferInterval == 0 and self.timeStep != 0:
-            partnerCommitmentPosterior = self.updatePartnerCommitmentDistribution(self.partnerCommitmentPrior, self.lastState, perceivedAction)
+        if timeStep % self.commitmentInferInterval == 0 and timeStep != 0:
+            partnerCommitPosterior = self.updatePartnerCommitDistribution(self.partnerCommitPrior, state, perceivedAction)
         else:
-            partnerCommitmentPosterior = self.partnerCommitmentPrior.copy()
-        
-        commitmentWarn = self.choosepartnerCommitment(partnerCommitmentPosterior)
+            partnerCommitPosterior = self.partnerCommitPrior.copy()
+        commitmentWarn = abs(1 - self.chooseCommitmentWarning(partnerCommitPosterior))
+        self.partnerCommitPrior = partnerCommitPosterior.copy()
         return commitmentWarn
 
 class BreakCommitmentBasedOnTime:
@@ -29,11 +29,11 @@ class BreakCommitmentBasedOnTime:
 
 class ActiveReCommit:
     def __init__(self, reCommitProbability):
-        self.reCommitProbality = reCommitProbality
+        self.reCommitProbability = reCommitProbability
 
     def __call__(self, committed, warned):
         if warned and (not committed):
-            newCommitted = min(1, np.random.choice(2, p = [1-self.reCommitProbality, self.reCommitProbality])
-        else: 
+            newCommitted = min(1, np.random.choice(2, p = [1-self.reCommitProbability, self.reCommitProbability]))
+        else:
             newCommitted = committed
         return newCommitted

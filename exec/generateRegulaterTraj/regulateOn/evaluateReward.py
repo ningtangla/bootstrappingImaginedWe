@@ -2,7 +2,7 @@ import sys
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 dirName = os.path.dirname(__file__)
-sys.path.append(os.path.join(dirName, '..', '..'))
+sys.path.append(os.path.join(dirName, '..', '..', '..'))
 
 import random
 import numpy as np
@@ -33,7 +33,7 @@ def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
     manipulatedVariables['numWolves'] = [2]
-    manipulatedVariables['hierarchy'] = [0, 1, 2]
+    manipulatedVariables['reCommitedProbability'] = [0, 1, 2]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
     modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)
@@ -43,18 +43,22 @@ def main():
 
 
     DIRNAME = os.path.dirname(__file__)
-    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchy',
+    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', '..', 'data', 'regulateOn',
                                     'trajectories')
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)
-   
-    NNNumSimulations = 200
+  
+    regulateOn = 1
+    numOneWolfActionSpace = 8
+    precision = 1.83
+    NNNumSimulations = 300
     maxRunningSteps = 100
     softParameterInPlanning = 2.5
     sheepPolicyName = 'sampleNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
-            'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'NNNumSimulations': NNNumSimulations}
+            'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'NNNumSimulations': NNNumSimulations, 
+            'numOneWolfActionSpace': numOneWolfActionSpace, 'regulateOn': regulateOn, 'precision': precision}
     trajectoryExtension = '.pickle'
     getTrajectorySavePath = GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
     
@@ -62,7 +66,7 @@ def main():
     loadTrajectories = LoadTrajectories(getTrajectorySavePath, loadFromPickle)
     loadTrajectoriesFromDf = lambda df: loadTrajectories(readParametersFromDf(df))
     
-    maxSteps = 50
+    maxSteps = 30
     measureIntentionArcheivement = lambda df: lambda trajectory: int(len(trajectory) < maxSteps) - 1 / maxSteps * min(len(trajectory), maxSteps)
     computeStatistics = ComputeStatistics(loadTrajectoriesFromDf, measureIntentionArcheivement)
     statisticsDf = toSplitFrame.groupby(levelNames).apply(computeStatistics)
@@ -80,9 +84,9 @@ def main():
         #axForDraw.set_ylabel(str(numWolves))
         
         group.index = group.index.droplevel('numWolves')
-        group.index.name = 'Hierarchy'
-        group.index = ['9*9', '5*5', '5*5 + 9']
-        group.plot.line(ax = axForDraw, y = 'mean', yerr = 'se', label = '', xlim = (-0.1, 2.1), ylim = (0, 0.75), marker = 'o', rot = 0 )
+        group.index.name = 'Regulater and Partner type'
+        group.index = ['regulateOn, uncooperative', 'regulateOn, cooperative', 'regulateOff, cooperative']
+        group.plot.line(ax = axForDraw, y = 'mean', yerr = 'se', label = '', xlim = (-0.1, 2.1), ylim = (-.2, 0.4), marker = 'o', rot = 0 )
         plotCounter = plotCounter + 1
 
     #plt.suptitle('Wolves Accumulated Reward')

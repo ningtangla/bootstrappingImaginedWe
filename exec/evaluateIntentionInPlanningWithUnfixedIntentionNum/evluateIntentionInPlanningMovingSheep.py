@@ -110,7 +110,7 @@ def main():
     initWolfCentralControlModel = generateWolfCentralControlModel(sharedWidths * wolfNNDepth, actionLayerWidths, valueLayerWidths, 
             resBlockSize, initializationMethod, dropoutRate)
     wolfModelPath = os.path.join('..', '..', 'data', 'preTrainModel', 
-            'agentId=99_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=200_trainSteps=50000')
+            'agentId=99_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=300_trainSteps=50000')
     wolfCentralControlNNModel = restoreVariables(initWolfCentralControlModel, wolfModelPath)
     wolfCentralControlPolicyGivenIntention = ApproximatePolicy(wolfCentralControlNNModel, wolfCentralControlActionSpace)
 

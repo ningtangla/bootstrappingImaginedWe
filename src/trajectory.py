@@ -9,8 +9,8 @@ class SampleTrajectory:
         self.isTerminal = isTerminal
         self.resetState = resetState
         self.chooseAction = chooseAction
-        self.resetpolicy = resetpolicy
-        self.recordactionforpolicy = recordactionforpolicy
+        self.resetPolicy = resetPolicy
+        self.recordActionForPolicy = recordActionForPolicy
 
     def __call__(self, policy):
 
@@ -103,7 +103,7 @@ class SampleTrajectoryWithRender:
             state = nextState
             if self.recordActionForPolicy:
                 self.recordActionForPolicy([action])
-        
+
         if self.resetPolicy:
             policyAttributes = self.resetPolicy()
             if policyAttributes:

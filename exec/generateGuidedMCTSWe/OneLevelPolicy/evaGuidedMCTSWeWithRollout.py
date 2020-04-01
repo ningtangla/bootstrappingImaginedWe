@@ -21,16 +21,18 @@ from src.MDPChasing.reward import RewardFunctionCompete
 if __name__ == '__main__':
     dirName = os.path.dirname(__file__)
     trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRollout', 'OneLeveLPolicy', 'trajectories')
+    #trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRollout', 'HierarchyPolicy', 'trajectories')
     trajectorySaveExtension = '.pickle'
+    saveTrajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchyGuidedMCTS', 'trajectories')
 
     trajLenList = []
     accumulateRewardList = []
 
     NNNumSimulations = 200  # 300 with distance Herustic; 200 without distanceHerustic
     diff = []
-    for maxStep in range(20, 40):
+    for maxStep in range(40, 51):
         result = []
-        for numOneWolfActionSpace in [5, 9]:
+        for numOneWolfActionSpace in [9]:
             numWolves = 2
             maxRunningSteps = 100
             softParameterInPlanning = 2.5
@@ -44,14 +46,23 @@ if __name__ == '__main__':
             fuzzySearchParameterNames = ['sampleIndex']
             loadTrajectories = LoadTrajectories(generateTrajectorySavePath, loadFromPickle, fuzzySearchParameterNames)
             loadedTrajectories = loadTrajectories({'agentId': 1})
-
+             
+            hierarchy = 0
+            trajectorySaveFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
+                                         'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': hierarchy, 'numWolves': numWolves}
+            generateTrajectorySavePathForResave = GetSavePath(saveTrajectoriesSaveDirectory, trajectorySaveExtension, trajectorySaveFixedParameters)
+            trajectoriesResavePath = generateTrajectorySavePathForResave({})
+            saveToPickle(loadedTrajectories, trajectoriesResavePath)
+            #print(len(loadedTrajectories))
+    
     # traj length
             trajLen = np.mean([len(traj) for traj in loadedTrajectories])
             #print([len(tra) for tra in loadedTrajectories], trajLen)
-            filtedTrajLen = [len(traj) for traj in loadedTrajectories if len(traj) > 0]
+            filtedTrajLen = [len(traj) for traj in loadedTrajectories if len(traj)]
             trajLenList.append(trajLen)
-            reward = np.mean([(int(lenTra<maxRunningSteps+1) - min(lenTra, maxRunningSteps)/maxRunningSteps) for lenTra in filtedTrajLen])
-            #result.append(reward)
+            reward = np.mean([(int(lenTra<maxStep) - min(lenTra, maxStep)/maxStep) for lenTra in filtedTrajLen])
+            result.append(reward)
+            print(reward)
             #print(len(filtedTrajLen), filtedTrajLen)
 
     # accumulate reward
@@ -81,40 +92,37 @@ if __name__ == '__main__':
             def filterState(timeStep): return (timeStep[0][0:numOfAgent], timeStep[1], timeStep[2])
             trajectories = [[filterState(trajectory[timeStepIndex]) for timeStepIndex in range(len(trajectory)) if timeStepIndex < maxStep] 
                 for trajectory in loadedTrajectories if len(trajectory) <= maxStep]
-            for traj in trajectories:
-                print(traj[-2][0:2], traj[-1][0:2], len(traj)) 
             valuedTrajectories = [addValuesToTrajectory(tra) for tra in trajectories]
             dataMeanAccumulatedReward = np.mean([tra[0][3] for tra in valuedTrajectories])
-            print(reward, dataMeanAccumulatedReward)
-            result.append(dataMeanAccumulatedReward)
+            #result.append(dataMeanAccumulatedReward)
             #print(dataMeanAccumulatedReward)
             accumulateRewardList.append(dataMeanAccumulatedReward)
-        diff.append(result[1] - result[0])
-        print(diff)
-    print(diff.index(max(diff)) + 20)
+        #diff.append(result[1] - result[0])
+        #print(diff)
+    #print(diff.index(max(diff)) + 20)
 # plot
-    fig = plt.figure()
-    axForDraw = fig.add_subplot(1, 1, 1)
-    axForDraw.set_ylim(0, 1)
-
-    xlabel = ['5*5Wolves', '9*9Wolves', ]
-
-    x = np.arange(2)
-    a = accumulateRewardList
-
-    totalWidth, n = 0.6, 2
-    width = totalWidth / n
-
-    x = x - (totalWidth - width) / 2
-    plt.bar(x, a, width=width)
-
-    plt.xticks(x, xlabel)
-
-    xlocs, xlabs = plt.xticks()
-    for i, v in enumerate(a):
-        plt.text(xlocs[i] - 0.05, v + 0.1, str(v))
-
-    plt.legend()
-    plt.title('mean trajectory length with simulation={} totalSteps=100'.format(NNNumSimulations))
-    plt.savefig('compareWolfWithDiffActionSpace.png')
-    plt.show()
+#    fig = plt.figure()
+#    axForDraw = fig.add_subplot(1, 1, 1)
+#    axForDraw.set_ylim(0, 1)
+#
+#    xlabel = ['5*5Wolves', '9*9Wolves', ]
+#
+#    x = np.arange(2)
+#    a = accumulateRewardList
+#
+#    totalWidth, n = 0.6, 2
+#    width = totalWidth / n
+#
+#    x = x - (totalWidth - width) / 2
+#    plt.bar(x, a, width=width)
+#
+#    plt.xticks(x, xlabel)
+#
+#    xlocs, xlabs = plt.xticks()
+#    for i, v in enumerate(a):
+#        plt.text(xlocs[i] - 0.05, v + 0.1, str(v))
+#
+#    plt.legend()
+#    plt.title('mean trajectory length with simulation={} totalSteps=100'.format(NNNumSimulations))
+#    plt.savefig('compareWolfWithDiffActionSpace.png')
+#    plt.show()

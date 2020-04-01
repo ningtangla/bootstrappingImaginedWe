@@ -60,6 +60,7 @@ class Expand:
 
     def __call__(self, leafNode):
         currentState = list(leafNode.id.values())[0]
+        #print(currentState, list(leafNode.id.keys())[0])
         if not self.isTerminal(currentState):
             leafNode.isExpanded = True
             leafNode = self.initializeChildren(leafNode)
