@@ -146,7 +146,7 @@ class MCTSRender():
 
 
 class Render():
-    def __init__(self, numOfAgent, posIndex, screen, screenColor, circleColorList, circleSize, saveImage, saveImageDir):
+    def __init__(self, numOfAgent, posIndex, screen, screenColor, circleColorList, circleSize, saveImage, saveImageDir,drawBackground):
         self.numOfAgent = numOfAgent
         self.posIndex = posIndex
         self.screen = screen
@@ -155,6 +155,7 @@ class Render():
         self.circleSize = circleSize
         self.saveImage = saveImage
         self.saveImageDir = saveImageDir
+        self.drawBackground= drawBackground
 
     def __call__(self, interpolatedStates):
         for j in range(1):
@@ -162,7 +163,7 @@ class Render():
                 if event.type == pg.QUIT:
                     pg.quit()
 
-            self.screen.fill(self.screenColor)
+            self.drawBackground()
             for interpolatedState in interpolatedStates:
                 for i in range(self.numOfAgent):
                     agentPos = interpolatedState[i][self.posIndex]
@@ -173,7 +174,7 @@ class Render():
                         filenameList = os.listdir(self.saveImageDir)
                         pg.image.save(self.screen, self.saveImageDir + '/' + str(len(filenameList)) + '.png')
 
-                self.screen.fill(self.screenColor)
+                self.drawBackground()
                 pg.display.flip()
                 pg.time.wait(1)
 
@@ -630,7 +631,7 @@ def main():
         if renderOn:
             circleColorList = [THECOLORS['green'], THECOLORS['green'], THECOLORS['red'], THECOLORS['red']]
             interpolateStateForDemo = drawDemo.InterpolateState(4, transit)
-            render = Render(numOfAgent, posIndexInState, screen, screenColor, circleColorList, circleSize, saveImage, saveImageDir)
+            render = Render(numOfAgent, posIndexInState, screen, screenColor, circleColorList, circleSize, saveImage, saveImageDir,drawBackground)
 
         interpolateStateInPlay = InterpolateState(3, transit, isTerminalInPlay)
         transitInPlay = lambda state, action : interpolateStateInPlay(state, action)
