@@ -32,14 +32,15 @@ from src.inference.inference import CalPolicyLikelihood, InferOneStep, InferOnTr
 from src.evaluation import ComputeStatistics
 from src.valueFromNode import EstimateValueFromNode
 
+
 def sortSelfIdFirst(weId, selfId):
     weId.insert(0, weId.pop(selfId))
     return weId
 
 
 def main():
-    DEBUG = 1
-    renderOn = 1
+    DEBUG = 0
+    renderOn = 0
     if DEBUG:
         parametersForTrajectoryPath = {}
         startSampleIndex = 0
@@ -61,18 +62,17 @@ def main():
 
     trajectorySaveExtension = '.pickle'
     numOneWolfActionSpace = 9
-    NNNumSimulations = 200 #300 with distance Herustic; 200 without distanceHerustic
+    NNNumSimulations = 200  # 300 with distance Herustic; 200 without distanceHerustic
     numWolves = 2
-    maxRunningSteps = 101
+    maxRunningSteps = 100
     softParameterInPlanning = 2.5
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'maxNNPolicy'
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
-            'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'numOneWolfActionSpace': numOneWolfActionSpace, 'numWolves': numWolves}
+                                 'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'numOneWolfActionSpace': numOneWolfActionSpace, 'numWolves': numWolves}
 
     generateTrajectorySavePath = GetSavePath(trajectoriesSaveDirectory, trajectorySaveExtension, trajectoryFixedParameters)
     trajectorySavePath = generateTrajectorySavePath(parametersForTrajectoryPath)
-
 
     if not os.path.isfile(trajectorySavePath):
 
@@ -83,9 +83,9 @@ def main():
         yObstacles = [[100, 200], [400, 500]]
         numSheep = 2
         numOfAgent = numWolves + numSheep
-        isLegal = lambda state: not(np.any([(xObstacle[0]<state[0]) and (xObstacle[1]>state[0]) and (yObstacle[0]<state[1]) and (yObstacle[1]>state[1]) for xObstacle, yObstacle in zip(xObstacles, yObstacles)]))
+        isLegal = lambda state: not(np.any([(xObstacle[0] < state[0]) and (xObstacle[1] > state[0]) and (yObstacle[0] < state[1]) and (yObstacle[1] > state[1]) for xObstacle, yObstacle in zip(xObstacles, yObstacles)]))
         reset = Reset(xBoundary, yBoundary, numOfAgent, isLegal)
-        
+
         stayInBoundaryAndOutObstacleByReflectVelocity = StayInBoundaryAndOutObstacleByReflectVelocity(xBoundary, yBoundary, xObstacles, yObstacles)
         transit = TransitForNoPhysics(stayInBoundaryAndOutObstacleByReflectVelocity)
 
@@ -99,17 +99,17 @@ def main():
 
         # MDP Policy
         sheepImagindWeIntentionPrior = {tuple(range(numSheep, numSheep + numWolves)): 1}
-        wolfImaginedWeIntentionPrior = {(sheepId, ): 1/numSheep for sheepId in range(numSheep)}
+        wolfImaginedWeIntentionPrior = {(sheepId, ): 1 / numSheep for sheepId in range(numSheep)}
         imaginedWeIntentionPriors = [sheepImagindWeIntentionPrior] * numSheep + [wolfImaginedWeIntentionPrior] * numWolves
 
         # Percept Action
         imaginedWeIdCopys = [list(range(numSheep, numSheep + numWolves)) for _ in range(numWolves)]
         imaginedWeIdsForInferenceSubject = [sortSelfIdFirst(weIdCopy, selfId)
-            for weIdCopy, selfId in zip(imaginedWeIdCopys, list(range(numWolves)))]
+                                            for weIdCopy, selfId in zip(imaginedWeIdCopys, list(range(numWolves)))]
         perceptSelfAction = lambda singleAgentAction: singleAgentAction
         perceptOtherAction = lambda singleAgentAction: singleAgentAction
         perceptImaginedWeAction = [PerceptImaginedWeAction(imaginedWeIds, perceptSelfAction, perceptOtherAction)
-                for imaginedWeIds in imaginedWeIdsForInferenceSubject]
+                                   for imaginedWeIds in imaginedWeIdsForInferenceSubject]
         perceptActionForAll = [lambda action: action] * numSheep + perceptImaginedWeAction
 
         # Inference of Imagined We
@@ -120,9 +120,9 @@ def main():
         numStateSpace = 2 * (numSheep + numWolves - 1)
         actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
                        (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
-        predatorPowerRatio = 6
+        predatorPowerRatio = 9
         wolfIndividualActionSpace = list(map(tuple, np.array(actionSpace) * predatorPowerRatio))
-        wolfCentralControlActionSpace = list(it.product(wolfIndividualActionSpace, repeat = numWolves))
+        wolfCentralControlActionSpace = list(it.product(wolfIndividualActionSpace, repeat=numWolves))
         numWolvesActionSpace = len(wolfCentralControlActionSpace)
         regularizationFactor = 1e-4
         generateWolfCentralControlModel = GenerateModel(numStateSpace, numWolvesActionSpace, regularizationFactor)
@@ -134,10 +134,12 @@ def main():
         dropoutRate = 0.0
         initializationMethod = 'uniform'
         initWolfCentralControlModel = generateWolfCentralControlModel(sharedWidths * wolfNNDepth, actionLayerWidths, valueLayerWidths,
-                resBlockSize, initializationMethod, dropoutRate)
-        wolfModelPath = os.path.join('..', '..', '..', 'data', 'preTrainModel',
-                'agentId='+str(numOneWolfActionSpace * np.sum([10**_ for _ in
-                range(numWolves)]))+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations='+str(NNNumSimulations)+'_trainSteps=50000')
+                                                                      resBlockSize, initializationMethod, dropoutRate)
+        # wolfModelPath = os.path.join('..', '..', '..', 'data', 'preTrainModel',
+        #         'agentId='+str(numOneWolfActionSpace * np.sum([10**_ for _ in
+        #         range(numWolves)]))+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations='+str(NNNumSimulations)+'_trainSteps=50000')
+        wolfModelPath = os.path.join('..', '..', '..', 'data', 'preTrainModel', 'agentId=001_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=300_trainSteps=50000')
+
         wolfCentralControlNNModel = restoreVariables(initWolfCentralControlModel, wolfModelPath)
         wolfCentralControlPolicyGivenIntention = ApproximatePolicy(wolfCentralControlNNModel, wolfCentralControlActionSpace)
 
@@ -146,10 +148,10 @@ def main():
         softenWolfCentralControlPolicyGivenIntentionInInference = lambda state: softPolicyInInference(wolfCentralControlPolicyGivenIntention(state))
 
         getStateForPolicyGivenIntentionInInference = [GetStateForPolicyGivenIntention(imaginedWeId) for imaginedWeId in
-                imaginedWeIdsForInferenceSubject]
+                                                      imaginedWeIdsForInferenceSubject]
 
         calPoliciesLikelihood = [CalPolicyLikelihood(getState, softenWolfCentralControlPolicyGivenIntentionInInference)
-                for getState in getStateForPolicyGivenIntentionInInference]
+                                 for getState in getStateForPolicyGivenIntentionInInference]
 
         # ActionPerception Likelihood
         calActionPerceptionLikelihood = lambda action, perceivedAction: int(np.allclose(np.array(action), np.array(perceivedAction)))
@@ -158,7 +160,7 @@ def main():
         composeCalJointLikelihood = lambda calPolicyLikelihood, calActionPerceptionLikelihood: lambda intention, state, action, perceivedAction: \
             calPolicyLikelihood(intention, state, action) * calActionPerceptionLikelihood(action, perceivedAction)
         calJointLikelihoods = [composeCalJointLikelihood(calPolicyLikelihood, calActionPerceptionLikelihood)
-            for calPolicyLikelihood in calPoliciesLikelihood]
+                               for calPolicyLikelihood in calPoliciesLikelihood]
 
         # Joint Hypothesis Space
         priorDecayRate = 1
@@ -168,19 +170,19 @@ def main():
         jointHypothesisSpace = pd.MultiIndex.from_product(variables, names=['intention', 'action'])
         concernedHypothesisVariable = ['intention']
         inferImaginedWe = [InferOneStep(priorDecayRate, jointHypothesisSpace,
-                concernedHypothesisVariable, calJointLikelihood) for calJointLikelihood in calJointLikelihoods]
+                                        concernedHypothesisVariable, calJointLikelihood) for calJointLikelihood in calJointLikelihoods]
         updateIntention = [sheepUpdateIntentionMethod] * numSheep + inferImaginedWe
         chooseIntention = sampleFromDistribution
 
         # Get State of We and Intention
         imaginedWeIdsForAllAgents = [[id] for id in range(numSheep)] + imaginedWeIdsForInferenceSubject
         getStateForPolicyGivenIntentions = [GetStateForPolicyGivenIntention(imaginedWeId)
-                for imaginedWeId in imaginedWeIdsForAllAgents]
+                                            for imaginedWeId in imaginedWeIdsForAllAgents]
 
-        #NN Policy Given Intention
+        # NN Policy Given Intention
         sheepActionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
-                       (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
-        preyPowerRatio = 9
+                            (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
+        preyPowerRatio = 10
         sheepIndividualActionSpace = list(map(tuple, np.array(sheepActionSpace) * preyPowerRatio))
         sheepCentralControlActionSpace = list(it.product(sheepIndividualActionSpace))
         numSheepActionSpace = len(sheepCentralControlActionSpace)
@@ -194,20 +196,21 @@ def main():
         dropoutRate = 0.0
         initializationMethod = 'uniform'
         initSheepCentralControlModel = generateSheepCentralControlModel(sharedWidths * sheepNNDepth, actionLayerWidths, valueLayerWidths,
-                resBlockSize, initializationMethod, dropoutRate)
-        sheepModelPath = os.path.join('..', '..', '..', 'data', 'preTrainModel',
-                'agentId=0.'+str(numWolves)+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=100_trainSteps=50000')
+                                                                        resBlockSize, initializationMethod, dropoutRate)
+        # sheepModelPath = os.path.join('..', '..', '..', 'data', 'preTrainModel',
+        #         'agentId=0.'+str(numWolves)+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=100_trainSteps=50000')
+        sheepModelPath = os.path.join('..', '..', '..', 'data', 'preTrainModel', 'agentId=000_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=100_trainSteps=50000')
         sheepCentralControlNNModel = restoreVariables(initSheepCentralControlModel, sheepModelPath)
         sheepCentralControlPolicyGivenIntention = ApproximatePolicy(sheepCentralControlNNModel, sheepCentralControlActionSpace)
 
-	# MCTS
+    # MCTS
         cInit = 1
         cBase = 100
         calculateScore = ScoreChild(cInit, cBase)
         selectChild = SelectChild(calculateScore)
 
         # prior
-        softParameterInGuide = 0.5
+        softParameterInGuide = 1
         softPolicyInGuide = SoftPolicy(softParameterInGuide)
         softSheepParameterInGuide = softParameterInGuide
         softSheepPolicyInGuide = SoftPolicy(softSheepParameterInGuide)
@@ -222,10 +225,10 @@ def main():
         isTerminalInMCTS = IsTerminal(killzoneRadius, getPreyPosInMCTS, getPredatorPosInMCTS)
         numFrameToInterpolate = 3
         interpolateStateInMCTS = InterpolateState(3, transit, isTerminalInMCTS)
-        transitInMCTSWolf = lambda state, wolfCentrolControlAction : interpolateStateInMCTS(state, np.concatenate([sampleFromDistribution(sheepCentralControlPolicyGivenIntention(state)),
-            wolfCentrolControlAction]))
-        transitInMCTSSheep = lambda state, sheepCentrolControlAction : interpolateStateInMCTS(state, np.concatenate([sheepCentrolControlAction, 
-            sampleFromDistribution(wolfCentralControlPolicyGivenIntention(state))]))
+        transitInMCTSWolf = lambda state, wolfCentrolControlAction: interpolateStateInMCTS(state, np.concatenate([sampleFromDistribution(sheepCentralControlPolicyGivenIntention(state)),
+                                                                                                                  wolfCentrolControlAction]))
+        transitInMCTSSheep = lambda state, sheepCentrolControlAction: interpolateStateInMCTS(state, np.concatenate([sheepCentrolControlAction,
+                                                                                                                    sampleFromDistribution(wolfCentralControlPolicyGivenIntention(state))]))
 
         # initialize children; expand
         initializeChildrenWolf = InitializeChildren(
@@ -235,7 +238,7 @@ def main():
             sheepCentralControlActionSpace, transitInMCTSSheep, getActionPriorSheep)
         expandSheep = Expand(isTerminalInMCTS, initializeChildrenSheep)
 
-        #estimateStateValue
+        # estimateStateValue
         wolfTerminalReward = 1
         approximateValueWolf = ApproximateValue(wolfCentralControlNNModel)
         getStateFromNode = lambda node: list(node.id.values())[0]
@@ -245,13 +248,13 @@ def main():
         approximateValueSheep = ApproximateValue(sheepCentralControlNNModel)
         getStateFromNode = lambda node: list(node.id.values())[0]
         estimateValueSheep = EstimateValueFromNode(wolfTerminalReward, isTerminalInMCTS, getStateFromNode, approximateValueSheep)
-        
-        numSimulationsWolf = 180
+
+        numSimulationsWolf = 200
         wolfCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsWolf, selectChild, expandWolf, estimateValueWolf, backup, establishPlainActionDist)
         numSimulationsSheep = 20
         sheepCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsSheep, selectChild, expandSheep, estimateValueSheep, backup, establishPlainActionDist)
 
-	#final individual polices
+    # final individual polices
         softPolicyInPlanning = SoftPolicy(softParameterInPlanning)
         softSheepParameterInPlanning = softParameterInPlanning
         softSheepPolicyInPlanning = SoftPolicy(softSheepParameterInPlanning)
@@ -259,25 +262,25 @@ def main():
         softenWolfCentralControlPolicyGivenIntentionInPlanning = lambda state: softPolicyInPlanning(wolfCentralControlGuidedMCTSPolicyGivenIntention(state))
         centralControlPoliciesGivenIntentions = [softenSheepCentralControlPolicyGivenIntentionInPlanning] * numSheep + [softenWolfCentralControlPolicyGivenIntentionInPlanning] * numWolves
         centralControlPoliciesGivenIntentions = [softenSheepCentralControlPolicyGivenIntentionInPlanning] * numSheep + [softenWolfCentralControlPolicyGivenIntentionInPlanning] * numWolves
-        planningIntervals = [1] * numSheep +  [1] * numWolves
+        planningIntervals = [1] * numSheep + [1] * numWolves
         intentionInferInterval = 1
         individualPolicies = [PolicyOnChangableIntention(perceptAction,
-            imaginedWeIntentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention, planningInterval, intentionInferInterval)
-                for perceptAction, imaginedWeIntentionPrior, getStateForPolicyGivenIntention, updateIntentionDistribution, policyGivenIntention, planningInterval
-                in zip(perceptActionForAll, imaginedWeIntentionPriors, getStateForPolicyGivenIntentions,
-                    updateIntention, centralControlPoliciesGivenIntentions, planningIntervals)]
+                                                         imaginedWeIntentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention, planningInterval, intentionInferInterval)
+                              for perceptAction, imaginedWeIntentionPrior, getStateForPolicyGivenIntention, updateIntentionDistribution, policyGivenIntention, planningInterval
+                              in zip(perceptActionForAll, imaginedWeIntentionPriors, getStateForPolicyGivenIntentions,
+                                     updateIntention, centralControlPoliciesGivenIntentions, planningIntervals)]
 
         individualIdsForAllAgents = list(range(numWolves + numSheep))
         actionChoiceMethods = {'sampleNNPolicy': sampleFromDistribution, 'maxNNPolicy': maxFromDistribution}
-        chooseCentrolAction = [actionChoiceMethods[sheepPolicyName]]* numSheep + [actionChoiceMethods[wolfPolicyName]]* numWolves
+        chooseCentrolAction = [actionChoiceMethods[sheepPolicyName]] * numSheep + [actionChoiceMethods[wolfPolicyName]] * numWolves
         assignIndividualAction = [AssignCentralControlToIndividual(imaginedWeId, individualId) for imaginedWeId, individualId in
-                zip(imaginedWeIdsForAllAgents, individualIdsForAllAgents)]
+                                  zip(imaginedWeIdsForAllAgents, individualIdsForAllAgents)]
         individualActionMethods = [lambda centrolActionDist: assign(chooseAction(centrolActionDist)) for assign, chooseAction in
-                zip(assignIndividualAction, chooseCentrolAction)]
+                                   zip(assignIndividualAction, chooseCentrolAction)]
 
         policiesResetAttributes = ['timeStep', 'lastState', 'lastAction', 'intentionPrior', 'formerIntentionPriors']
         policiesResetAttributeValues = [dict(zip(policiesResetAttributes, [0, None, None, intentionPrior, [intentionPrior]])) for intentionPrior in
-                imaginedWeIntentionPriors]
+                                        imaginedWeIntentionPriors]
         returnAttributes = ['formerIntentionPriors']
         resetPolicy = ResetPolicy(policiesResetAttributeValues, individualPolicies, returnAttributes)
         attributesToRecord = ['lastAction']
@@ -301,10 +304,10 @@ def main():
             render = Render(numOfAgent, posIndexInState, screen, screenColor, circleColorList, circleSize, saveImage, saveImageDir)
 
         interpolateStateInPlay = InterpolateState(4, transit, isTerminalInPlay)
-        transitInPlay = lambda state, action : interpolateStateInPlay(state, action)
+        transitInPlay = lambda state, action: interpolateStateInPlay(state, action)
         sampleTrajectory = SampleTrajectoryWithRender(maxRunningSteps, transitInPlay, isTerminalInPlay,
-                reset, individualActionMethods, resetPolicy,
-                recordActionForPolicy, render, renderOn)
+                                                      reset, individualActionMethods, resetPolicy,
+                                                      recordActionForPolicy, render, renderOn)
         policy = lambda state: [individualPolicy(state) for individualPolicy in individualPolicies]
 
         trajectories = [sampleTrajectory(policy) for trjaectoryIndex in range(startSampleIndex, endSampleIndex)]
