@@ -18,7 +18,6 @@ import pathos.multiprocessing as mp
 import math
 import pygame as pg
 from pygame.color import THECOLORS
-
 from anytree import AnyNode as Node
 
 from src.algorithms.mcts import ScoreChild, SelectChild, InitializeChildren, MCTS, backup, establishPlainActionDist, Expand, RollOut, establishSoftmaxActionDist
@@ -646,9 +645,9 @@ def main():
         render = None
         if renderOn:
             circleColorList = [THECOLORS['green'], THECOLORS['green'], THECOLORS['red'], THECOLORS['red']]
-            interpolateStateForDemo = drawDemo.InterpolateState(4, transit)
             render = Render(numOfAgent, posIndexInState, screen, screenColor, circleColorList, circleSize, saveImage, saveImageDir)
 
+        interpolateStateForDemo = drawDemo.InterpolateState(4, transit)
         interpolateStateInPlay = InterpolateState(3, transit, isTerminalInPlay)
         transitInPlay = lambda state, action : interpolateStateInPlay(state, action)
         sampleTrajectory = SampleTrajectoryWithRender(maxRunningSteps, transitInPlay, isTerminalInPlay,
