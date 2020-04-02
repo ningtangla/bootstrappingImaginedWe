@@ -115,7 +115,7 @@ def main():
         sheepUpdateIntentionMethod = noInferIntention
 
         # Policy Likelihood function: Wolf Centrol Control NN Policy Given Intention
-        numStateSpace = 2 * (numSheep + numWolves - 1)
+        numStateSpace = 2 * (numWolves + 1)
         #actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
          #              (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
         actionSpace = [(10, 0), (0, 10), (-10, 0), (0, -10), (0, 0)]

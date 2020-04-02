@@ -104,7 +104,7 @@ def main():
         imaginedWeIdsForInferenceSubject = [sortSelfIdFirst(weIdCopy, selfId)
             for weIdCopy, selfId in zip(imaginedWeIdCopys, list(range(numWolves)))]
         
-        numStateSpace = 2 * (numSheep + numWolves - 1)
+        numStateSpace = 2 * (numWolves + 1)
         #actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
         #              (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
         actionSpace = [(10, 0), (0, 10), (-10, 0), (0, -10), (0, 0)]

@@ -67,7 +67,7 @@ def main():
     numWolves = 2
     maxRunningSteps = 101
     softParameterInPlanning = 2.5
-    numSheep = 4
+    numSheep = 2
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'maxNNPolicy'
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
@@ -82,8 +82,8 @@ def main():
         # MDP Env
         xBoundary = [0, 600]
         yBoundary = [0, 600]
-        xObstacles = [[100, 200], [400, 500]]
-        yObstacles = [[100, 200], [400, 500]]
+        xObstacles = [[120, 220], [380, 480]]
+        yObstacles = [[120, 220], [380, 480]]
         numOfAgent = numWolves + numSheep
         isLegal = lambda state: not(np.any([(xObstacle[0] < state[0]) and (xObstacle[1] > state[0]) and (yObstacle[0] < state[1]) and (yObstacle[1] > state[1]) for xObstacle, yObstacle in zip(xObstacles, yObstacles)]))
         reset = Reset(xBoundary, yBoundary, numOfAgent, isLegal)
@@ -96,7 +96,7 @@ def main():
         posIndexInState = [0, 1]
         getPreyPos = GetAgentPosFromState(possiblePreyIds, posIndexInState)
         getPredatorPos = GetAgentPosFromState(possiblePredatorIds, posIndexInState)
-        killzoneRadius = 50
+        killzoneRadius = 40
         isTerminalInPlay = IsTerminal(killzoneRadius, getPreyPos, getPredatorPos)
 
         # MDP Policy
@@ -122,7 +122,7 @@ def main():
         numStateSpace = 2 * (numWolves + 1)
         actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
                        (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
-        predatorPowerRatio = 9
+        predatorPowerRatio = 8
         wolfIndividualActionSpace = list(map(tuple, np.array(actionSpace) * predatorPowerRatio))
         wolfCentralControlActionSpace = list(it.product(wolfIndividualActionSpace, repeat=numWolves))
         numWolvesActionSpace = len(wolfCentralControlActionSpace)
@@ -247,7 +247,7 @@ def main():
         getSheepPos = GetAgentPosFromState(sheepId, posIndexInState)
         getWolvesPoses = [GetAgentPosFromState(wolfId, posIndexInState) for wolfId in range(1, numWolves + 1)]
 
-        minDistance = 300
+        minDistance = 350
         rolloutHeuristicWeightWolf = 1e-1
         rolloutHeuristicsWolf = [reward.HeuristicDistanceToTarget(rolloutHeuristicWeightWolf, getWolfPos, getSheepPos, minDistance)
                                  for getWolfPos in getWolvesPoses]
@@ -284,7 +284,7 @@ def main():
 
         numSimulationsWolf = 200
         wolfCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsWolf, selectChild, expandWolf, rolloutWolf, backup, establishPlainActionDist)
-        numSimulationsSheep = 20
+        numSimulationsSheep = 60
         sheepCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsSheep, selectChild, expandSheep, rolloutSheep, backup, establishPlainActionDist)
 
     # final individual polices
