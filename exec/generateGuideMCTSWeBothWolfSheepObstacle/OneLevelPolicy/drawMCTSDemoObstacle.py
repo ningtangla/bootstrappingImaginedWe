@@ -65,7 +65,7 @@ class MCTS:
             while currentNode.isExpanded:
                 nextNode = self.selectChild(currentNode)
                 if self.mctsRenderOn:
-                    # print(self.allAgentsState)
+                    print(self.allAgentsState)
                     backgroundScreen = self.mctsRender(currentNode, nextNode, backgroundScreen, self.allAgentsState)
                 nodePath.append(nextNode)
                 currentNode = nextNode
@@ -311,13 +311,14 @@ class ScalePos:
 
 
 class Policy:
-    def __init__(self, individiualPolicies, attribute):
+    def __init__(self, individiualPolicies, MCTSPolicies, attribute):
         self.individiualPolicies = individiualPolicies
+        self.MCTSPolicies = MCTSPolicies
         self.attribute = attribute
 
     def __call__(self, state):
         attributeValue = state
-        [setattr(individualPolicy, self.attribute, attributeValue) for individualPolicy in self.individiualPolicies]
+        [setattr(MCTSPolicy, self.attribute, attributeValue) for MCTSPolicy in self.MCTSPolicies]
         actionDists = [individualPolicy(state) for individualPolicy in self.individiualPolicies]
         return actionDists
 
@@ -401,7 +402,7 @@ def main():
         sheepUpdateIntentionMethod = noInferIntention
 
         # Policy Likelihood function: Wolf Centrol Control NN Policy Given Intention
-        numStateSpace = 2 * (numSheep + numWolves - 1)
+        numStateSpace = 2 * (numWolves + 1)
         actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
                        (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
         predatorPowerRatio = 6
@@ -659,7 +660,8 @@ def main():
                 recordActionForPolicy, render, renderOn)
         # policy = lambda state: [individualPolicy(state) for individualPolicy in individualPolicies]
         MCTSChangeAttribute = 'allAgentsState'
-        policy = Policy(individualPolicies, MCTSChangeAttribute)
+        MCTSPolicies = [sheepCentralControlGuidedMCTSPolicyGivenIntention] * numSheep + [wolfCentralControlGuidedMCTSPolicyGivenIntention] * numWolves
+        policy = Policy(individualPolicies, MCTSPolicies, MCTSChangeAttribute)
 
         trajectories = [sampleTrajectory(policy) for trjaectoryIndex in range(startSampleIndex, endSampleIndex)]
         saveToPickle(trajectories, trajectorySavePath)
