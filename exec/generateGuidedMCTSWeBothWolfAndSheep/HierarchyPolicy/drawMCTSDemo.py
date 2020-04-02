@@ -51,6 +51,7 @@ class MCTS:
         self.outputDistribution = outputDistribution
         self.mctsRender = mctsRender
         self.mctsRenderOn = mctsRenderOn
+        self.allAgentsState = None
 
     def __call__(self, currentState):
         backgroundScreen = None
@@ -64,7 +65,7 @@ class MCTS:
             while currentNode.isExpanded:
                 nextNode = self.selectChild(currentNode)
                 if self.mctsRenderOn:
-                    backgroundScreen = self.mctsRender(currentNode, nextNode, backgroundScreen)
+                    backgroundScreen = self.mctsRender(currentNode, nextNode, backgroundScreen, self.allAgentsState)
                 nodePath.append(nextNode)
                 currentNode = nextNode
 
@@ -76,7 +77,7 @@ class MCTS:
 
 
 class MCTSRender():
-    def __init__(self, numAgent,MCTSAgentId, screen, surfaceWidth, surfaceHeight, screenColor, circleColorList, mctsLineColor, circleSize, saveImage, saveImageDir, drawState, scalePos):
+    def __init__(self, numAgent,MCTSAgentId, screen, surfaceWidth, surfaceHeight, screenColor, circleColorList, mctsLineColor, circleSize, saveImage, saveImageDir, drawState,drawStateAllAgent,circleColorListAll, scalePos):
         self.numAgent = numAgent
         self.MCTSAgentId = MCTSAgentId
         self.screen = screen
@@ -89,9 +90,11 @@ class MCTSRender():
         self.saveImage = saveImage
         self.saveImageDir = saveImageDir
         self.drawState = drawState
+        self.drawStateAllAgent = drawStateAllAgent
+        self.circleColorListAll = circleColorListAll
         self.scalePos = scalePos
 
-    def __call__(self, currNode, nextNode, backgroundScreen):
+    def __call__(self, currNode, nextNode, backgroundScreen,allAgentsState):
         parentNumVisit = currNode.numVisited
         parentValueToTal = currNode.sumValue
         originalState = list(currNode.id.values())[0]
@@ -106,7 +109,7 @@ class MCTSRender():
         surfaceToDraw = pg.Surface((self.surfaceWidth, self.surfaceHeight))
         surfaceToDraw.fill(self.screenColor)
         if backgroundScreen == None:
-            backgroundScreen = self.drawState(poses, self.circleColorList)
+            backgroundScreen = self.drawStateAllAgent(allAgentsState, self.circleColorListAll)
             if self.saveImage == True:
                 for numStaticImage in range(120):
                     filenameList = os.listdir(self.saveImageDir)
@@ -294,6 +297,18 @@ class ScalePos:
         adjustedPoses = adjustPos(state)
 
         return adjustedPoses
+
+class Policy:
+    def __init__(self, individiualPolicies, MCTSPolicies, attribute):
+        self.individiualPolicies = individiualPolicies
+        self.MCTSPolicies = MCTSPolicies
+        self.attribute = attribute
+
+    def __call__(self, state):
+        attributeValue = state
+        [setattr(MCTSPolicy, self.attribute, attributeValue) for MCTSPolicy in self.MCTSPolicies]
+        actionDists = [individualPolicy(state) for individualPolicy in self.individiualPolicies]
+        return actionDists
 
 def main():
     DEBUG = 1
@@ -525,7 +540,7 @@ def main():
         getWolvesPoses = [GetAgentPosFromState(wolfId, posIndexInState) for wolfId in range(1, numWolves + 1)]
 
         minDistance = 400
-        rolloutHeuristicWeightWolf = 1e-2
+        rolloutHeuristicWeightWolf = 0
         rolloutHeuristicsWolf = [reward.HeuristicDistanceToTarget(rolloutHeuristicWeightWolf, getWolfPos, getSheepPos, minDistance)
             for getWolfPos in getWolvesPoses]
 
@@ -581,6 +596,10 @@ def main():
         outsideCircleColor = np.array([[255, 0, 0]] * numWolves)
         drawState = DrawState(screen, circleSize, numOfAgentInMCTS, posIndex, drawBackground)
 
+        drawStateAllAgent = DrawState(screen, circleSize, numOfAgent, posIndex, drawBackground)
+
+        circleColorListAll = [[144,238,144]]*numSheep +[[250,128,114]]*numWolves
+
         screenColor = THECOLORS['black']
         circleColorListInMCTS = [THECOLORS['green'], THECOLORS['red'], THECOLORS['red']]
         mctsLineColor = np.array([240, 240, 240, 180])
@@ -599,15 +618,15 @@ def main():
             os.makedirs(saveImageDir)
 
         mctsRenderOn = True
-        mctsRenderSheep = MCTSRender(numOfAgentInMCTS,sheepId, screen, screenWidth, screenHeight, screenColor, circleColorListInMCTS, mctsLineColor, circleSizeForMCTS, saveImage, saveImageDir, drawState, scalePos)
+        mctsRenderSheep = MCTSRender(numOfAgentInMCTS,sheepId, screen, screenWidth, screenHeight, screenColor, circleColorListInMCTS, mctsLineColor, circleSizeForMCTS, saveImage, saveImageDir, drawState, drawStateAllAgent,circleColorListAll, scalePos)
 
         wolvesId = 1
-        mctsRenderWolf = MCTSRender(numOfAgentInMCTS,wolvesId, screen, screenWidth, screenHeight, screenColor, circleColorListInMCTS, mctsLineColor, circleSizeForMCTS, saveImage, saveImageDir, drawState, scalePos)
+        mctsRenderWolf = MCTSRender(numOfAgentInMCTS,wolvesId, screen, screenWidth, screenHeight, screenColor, circleColorListInMCTS, mctsLineColor, circleSizeForMCTS, saveImage, saveImageDir, drawState,drawStateAllAgent,circleColorListAll, scalePos)
 
 
-        numSimulationsWolf = 180
+        numSimulationsWolf = 120
         wolfLevel2GuidedMCTSPolicyGivenIntention = MCTS(numSimulationsWolf, selectChild, expandWolf, rolloutWolf, backup, establishPlainActionDist, mctsRenderWolf, mctsRenderOn)
-        numSimulationsSheep = 20
+        numSimulationsSheep = 50
         sheepCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsSheep, selectChild, expandSheep, rolloutSheep, backup, establishPlainActionDist, mctsRenderSheep, mctsRenderOn)
 
     #final individual polices
@@ -653,7 +672,10 @@ def main():
         sampleTrajectory = SampleTrajectoryWithRender(maxRunningSteps, transitInPlay, isTerminalInPlay,
                 reset, individualActionMethods,interpolateStateForDemo, resetPolicy,
                 recordActionForPolicy, render, renderOn)
-        policy = lambda state: [individualPolicy(state) for individualPolicy in individualPolicies]
+        # policy = lambda state: [individualPolicy(state) for individualPolicy in individualPolicies]
+        MCTSChangeAttribute = 'allAgentsState'
+        MCTSPolicies = [sheepCentralControlGuidedMCTSPolicyGivenIntention] * numSheep + [wolfLevel2GuidedMCTSPolicyGivenIntention] * numWolves
+        policy = Policy(individualPolicies, MCTSPolicies, MCTSChangeAttribute)
 
         trajectories = [sampleTrajectory(policy) for trjaectoryIndex in range(startSampleIndex, endSampleIndex)]
         saveToPickle(trajectories, trajectorySavePath)
