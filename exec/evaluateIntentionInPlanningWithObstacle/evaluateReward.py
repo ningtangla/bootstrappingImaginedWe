@@ -43,16 +43,16 @@ def main():
 
 
     DIRNAME = os.path.dirname(__file__)
-    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchyGuidedMCTSBothWolfSheep',
+    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchy',
                                     'trajectories')
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)
    
     NNNumSimulations = 200
-    maxRunningSteps = 101
+    maxRunningSteps = 100
     softParameterInPlanning = 2.5
-    sheepPolicyName = 'maxNNPolicy'
-    wolfPolicyName = 'maxNNPolicy'
+    sheepPolicyName = 'sampleNNPolicy'
+    wolfPolicyName = 'sampleNNPolicy'
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
             'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'NNNumSimulations': NNNumSimulations}
     trajectoryExtension = '.pickle'

@@ -20,10 +20,10 @@ from src.MDPChasing.reward import RewardFunctionCompete
 
 if __name__ == '__main__':
     dirName = os.path.dirname(__file__)
-    trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRollout', 'OneLeveLPolicy', 'trajectories')
-    #trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRollout', 'HierarchyPolicy', 'trajectories')
+    trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRolloutBothWolfSheep', 'OneLeveLPolicy', 'trajectories')
+    #trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRolloutBothWolfSheep', 'HierarchyPolicy', 'trajectories')
     trajectorySaveExtension = '.pickle'
-    saveTrajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchyGuidedMCTS', 'trajectories')
+    saveTrajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchyGuidedMCTSBothWolfSheep', 'trajectories')
 
     trajLenList = []
     accumulateRewardList = []
@@ -34,10 +34,10 @@ if __name__ == '__main__':
         result = []
         for numOneWolfActionSpace in [9]:
             numWolves = 2
-            maxRunningSteps = 100
+            maxRunningSteps = 101
             softParameterInPlanning = 2.5
-            sheepPolicyName = 'sampleNNPolicy'
-            wolfPolicyName = 'sampleNNPolicy'
+            sheepPolicyName = 'maxNNPolicy'
+            wolfPolicyName = 'maxNNPolicy'
             trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
                                          'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'numOneWolfActionSpace': numOneWolfActionSpace, 'numWolves': numWolves}
 
@@ -59,6 +59,7 @@ if __name__ == '__main__':
             trajLen = np.mean([len(traj) for traj in loadedTrajectories])
             #print([len(tra) for tra in loadedTrajectories], trajLen)
             filtedTrajLen = [len(traj) for traj in loadedTrajectories if len(traj)]
+            print(np.mean(filtedTrajLen))
             trajLenList.append(trajLen)
             reward = np.mean([(int(lenTra<maxStep) - min(lenTra, maxStep)/maxStep) for lenTra in filtedTrajLen])
             result.append(reward)

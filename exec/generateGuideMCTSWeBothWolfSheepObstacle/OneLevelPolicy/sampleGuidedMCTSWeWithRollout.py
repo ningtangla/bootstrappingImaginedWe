@@ -40,8 +40,8 @@ def sortSelfIdFirst(weId, selfId):
 
 
 def main():
-    DEBUG = 0
-    renderOn = 0
+    DEBUG = 1
+    renderOn = 1
     if DEBUG:
         parametersForTrajectoryPath = {}
         startSampleIndex = 0
@@ -67,10 +67,12 @@ def main():
     numWolves = 2
     maxRunningSteps = 101
     softParameterInPlanning = 2.5
+    numSheep = 4
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'maxNNPolicy'
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
-                                 'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'numOneWolfActionSpace': numOneWolfActionSpace, 'numWolves': numWolves}
+                                 'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'numOneWolfActionSpace': numOneWolfActionSpace, 
+                                 'numWolves': numWolves, 'numSheep': numSheep}
 
     generateTrajectorySavePath = GetSavePath(trajectoriesSaveDirectory, trajectorySaveExtension, trajectoryFixedParameters)
     trajectorySavePath = generateTrajectorySavePath(parametersForTrajectoryPath)
@@ -82,7 +84,6 @@ def main():
         yBoundary = [0, 600]
         xObstacles = [[100, 200], [400, 500]]
         yObstacles = [[100, 200], [400, 500]]
-        numSheep = 2
         numOfAgent = numWolves + numSheep
         isLegal = lambda state: not(np.any([(xObstacle[0] < state[0]) and (xObstacle[1] > state[0]) and (yObstacle[0] < state[1]) and (yObstacle[1] > state[1]) for xObstacle, yObstacle in zip(xObstacles, yObstacles)]))
         reset = Reset(xBoundary, yBoundary, numOfAgent, isLegal)
@@ -118,7 +119,7 @@ def main():
         sheepUpdateIntentionMethod = noInferIntention
 
         # Policy Likelihood function: Wolf Centrol Control NN Policy Given Intention
-        numStateSpace = 2 * (numSheep + numWolves - 1)
+        numStateSpace = 2 * (numWolves + 1)
         actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
                        (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
         predatorPowerRatio = 9
@@ -246,8 +247,8 @@ def main():
         getSheepPos = GetAgentPosFromState(sheepId, posIndexInState)
         getWolvesPoses = [GetAgentPosFromState(wolfId, posIndexInState) for wolfId in range(1, numWolves + 1)]
 
-        minDistance = 400
-        rolloutHeuristicWeightWolf = 0.1
+        minDistance = 300
+        rolloutHeuristicWeightWolf = 1e-1
         rolloutHeuristicsWolf = [reward.HeuristicDistanceToTarget(rolloutHeuristicWeightWolf, getWolfPos, getSheepPos, minDistance)
                                  for getWolfPos in getWolvesPoses]
 
@@ -323,7 +324,7 @@ def main():
             import pygame as pg
             from pygame.color import THECOLORS
             screenColor = THECOLORS['black']
-            circleColorList = [THECOLORS['green'], THECOLORS['green'], THECOLORS['yellow'], THECOLORS['red']]
+            circleColorList = [THECOLORS['green']] * numSheep + [THECOLORS['red']] * numWolves
             circleSize = 10
 
             saveImage = False

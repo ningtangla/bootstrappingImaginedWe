@@ -20,24 +20,24 @@ from src.MDPChasing.reward import RewardFunctionCompete
 
 if __name__ == '__main__':
     dirName = os.path.dirname(__file__)
-    trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRollout', 'OneLeveLPolicy', 'trajectories')
-    #trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRollout', 'HierarchyPolicy', 'trajectories')
+    trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRolloutBothWolfSheepObstacle', 'OneLeveLPolicy', 'trajectories')
+    #trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithNNValueBothWolfSheepObstacle', 'OneLeveLPolicy', 'trajectories')
     trajectorySaveExtension = '.pickle'
-    saveTrajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchyGuidedMCTS', 'trajectories')
+    saveTrajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'evaluateIntentionInPlanningWithObstacleGuidedMCTSBothWolfSheep', 'trajectories')
 
     trajLenList = []
     accumulateRewardList = []
 
     NNNumSimulations = 200  # 300 with distance Herustic; 200 without distanceHerustic
     diff = []
-    for maxStep in range(40, 51):
+    for maxStep in range(50, 51):
         result = []
-        for numOneWolfActionSpace in [5]:
+        for numOneWolfActionSpace in [9]:
             numWolves = 2
-            maxRunningSteps = 101
+            maxRunningSteps = 102
             softParameterInPlanning = 2.5
-            sheepPolicyName = 'sampleNNPolicy'
-            wolfPolicyName = 'sampleNNPolicy'
+            sheepPolicyName = 'maxNNPolicy'
+            wolfPolicyName = 'maxNNPolicy'
             trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
                                          'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'numOneWolfActionSpace': numOneWolfActionSpace, 'numWolves': numWolves}
 
@@ -47,9 +47,10 @@ if __name__ == '__main__':
             loadTrajectories = LoadTrajectories(generateTrajectorySavePath, loadFromPickle, fuzzySearchParameterNames)
             loadedTrajectories = loadTrajectories({'agentId': 1})
              
-            hierarchy = 1
+            MCTS = 'rollout'
+            numSheep = 2 
             trajectorySaveFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
-                                         'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': hierarchy, 'numWolves': numWolves}
+                    'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'MCTS': MCTS, 'numSheep':numSheep, 'numWolves': numWolves}
             generateTrajectorySavePathForResave = GetSavePath(saveTrajectoriesSaveDirectory, trajectorySaveExtension, trajectorySaveFixedParameters)
             trajectoriesResavePath = generateTrajectorySavePathForResave({})
             saveToPickle(loadedTrajectories, trajectoriesResavePath)
@@ -59,6 +60,7 @@ if __name__ == '__main__':
             trajLen = np.mean([len(traj) for traj in loadedTrajectories])
             #print([len(tra) for tra in loadedTrajectories], trajLen)
             filtedTrajLen = [len(traj) for traj in loadedTrajectories if len(traj)]
+            print(np.mean(filtedTrajLen))
             trajLenList.append(trajLen)
             reward = np.mean([(int(lenTra<maxStep) - min(lenTra, maxStep)/maxStep) for lenTra in filtedTrajLen])
             result.append(reward)

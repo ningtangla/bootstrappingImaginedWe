@@ -79,7 +79,7 @@ class SampleTrjactoriesForConditions:
         sheepUpdateIntentionMethod = noInferIntention
         
         # Policy Likelihood function: Wolf Centrol Control NN Policy Given Intention
-        numStateSpace = 2 * (numSheep + numWolves - 1)
+        numStateSpace = 2 * (numWolves + 1)
         actionSpace = [(10, 0), (0, 10), (-10, 0), (0, -10), (0, 0)]
         predatorPowerRatio = 8
         wolfIndividualActionSpace = list(map(tuple, np.array(actionSpace) * predatorPowerRatio))

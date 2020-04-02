@@ -85,7 +85,7 @@ class SampleTrjactoriesForConditions:
         sheepUpdateIntentionMethod = noInferIntention
         
         # Policy Likelihood function: Wolf Centrol Control NN Policy Given Intention
-        numStateSpace = 2 * (numSheep + numWolves - 1)
+        numStateSpace = 2 * (numWolves + 1)
         wolfCentralControlActionSpace = list(it.product(wolfIndividualActionSpace, repeat = numWolves))
         numWolvesActionSpace = len(wolfCentralControlActionSpace)
         regularizationFactor = 1e-4

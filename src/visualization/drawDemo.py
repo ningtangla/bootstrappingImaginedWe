@@ -4,13 +4,15 @@ import os
 import functools as ft
 
 class DrawBackground:
-    def __init__(self, screen, screenColor, xBoundary, yBoundary, lineColor, lineWidth):
+    def __init__(self, screen, screenColor, xBoundary, yBoundary, lineColor, lineWidth, xObstacles = None, yObstacles = None):
         self.screen = screen
         self.screenColor = screenColor
         self.xBoundary = xBoundary
         self.yBoundary = yBoundary
         self.lineColor = lineColor
         self.lineWidth = lineWidth
+        self.xObstacles = xObstacles
+        self.yObstacles = yObstacles
 
     def __call__(self):
         for event in pg.event.get():
@@ -22,6 +24,10 @@ class DrawBackground:
         self.screen.fill(self.screenColor)
         rectPos = [self.xBoundary[0], self.yBoundary[0], self.xBoundary[1], self.yBoundary[1]]
         pg.draw.rect(self.screen, self.lineColor, rectPos, self.lineWidth)
+        if self.xObstacles and self.yObstacles:
+            for xObstacle, yObstacle in zip(self.xObstacles, self.yObstacles):
+                rectPos = [xObstacle[0], yObstacle[0], xObstacle[1] - xObstacle[0], yObstacle[1] - yObstacle[0]]
+                pg.draw.rect(self.screen, self.lineColor, rectPos)
         return
 
 class DrawCircleOutside:
