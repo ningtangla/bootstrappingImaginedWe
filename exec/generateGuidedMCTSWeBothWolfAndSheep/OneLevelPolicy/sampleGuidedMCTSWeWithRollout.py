@@ -213,7 +213,7 @@ def main():
         getActionPriorWolf = lambda state: softPolicyInGuide(wolfCentralControlPolicyGivenIntention(state))
         getActionPriorSheep = lambda state: softSheepPolicyInGuide(sheepCentralControlPolicyGivenIntention(state))
 
-        # terminal and transit InMCTS 
+        # terminal and transit InMCTS
         possiblePreyIdsInMCTS = [0]
         possiblePredatorIdsInMCTS = list(range(1, numWolves + 1))
         getPreyPosInMCTS = GetAgentPosFromState(possiblePreyIdsInMCTS, posIndexInState)
@@ -223,7 +223,7 @@ def main():
         interpolateStateInMCTS = InterpolateState(3, transit, isTerminalInMCTS)
         transitInMCTSWolf = lambda state, wolfCentrolControlAction : interpolateStateInMCTS(state, np.concatenate([sampleFromDistribution(sheepCentralControlPolicyGivenIntention(state)),
             wolfCentrolControlAction]))
-        transitInMCTSSheep = lambda state, sheepCentrolControlAction : interpolateStateInMCTS(state, np.concatenate([sheepCentrolControlAction, 
+        transitInMCTSSheep = lambda state, sheepCentrolControlAction : interpolateStateInMCTS(state, np.concatenate([sheepCentrolControlAction,
             sampleFromDistribution(wolfCentralControlPolicyGivenIntention(state))]))
 
         # initialize children; expand
@@ -256,7 +256,7 @@ def main():
 
         maxRolloutSteps = 5
         rolloutWolf = RollOut(rolloutPolicyWolf, maxRolloutSteps, transitInMCTSWolf, rewardFunctionWolf, isTerminalInMCTS, rolloutHeuristicWolf)
-        
+
         rolloutHeuristicWeightSheep = 0
         rolloutHeuristicsSheep = [reward.HeuristicDistanceToTarget(rolloutHeuristicWeightSheep, getSheepPos, getSheepPos, minDistance)
             for getSheepPos in getWolvesPoses]
