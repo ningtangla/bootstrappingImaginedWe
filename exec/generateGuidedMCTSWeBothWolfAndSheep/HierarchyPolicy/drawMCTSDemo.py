@@ -105,7 +105,7 @@ class MCTSRender():
         originalNextState = list(nextNode.id.values())[0]
         nextPoses = self.scalePos(originalNextState)
 
-        lineWidth = math.ceil(0.1 * (nextNode.numVisited + 1))
+        lineWidth = math.ceil(0.3 * (nextNode.numVisited + 1))
         surfaceToDraw = pg.Surface((self.surfaceWidth, self.surfaceHeight))
         surfaceToDraw.fill(self.screenColor)
         if backgroundScreen == None:
@@ -316,7 +316,7 @@ def main():
     if DEBUG:
         parametersForTrajectoryPath = {}
         startSampleIndex = 0
-        endSampleIndex = 7
+        endSampleIndex = 4
         agentId = 1
         parametersForTrajectoryPath['sampleIndex'] = (startSampleIndex, endSampleIndex)
     else:
@@ -583,8 +583,8 @@ def main():
         leaveEdgeSpace = 195
         lineWidth = 4
         circleSize = 10
-        xBoundary = [leaveEdgeSpace, screenWidth - leaveEdgeSpace * 2]
-        yBoundary = [leaveEdgeSpace, screenHeight - leaveEdgeSpace * 2]
+        # xBoundary = [leaveEdgeSpace, screenWidth - leaveEdgeSpace * 2]
+        # yBoundary = [leaveEdgeSpace, screenHeight - leaveEdgeSpace * 2]
         screenColor = THECOLORS['black']
         lineColor = THECOLORS['white']
 
@@ -598,7 +598,7 @@ def main():
 
         drawStateAllAgent = DrawState(screen, circleSize, numOfAgent, posIndex, drawBackground)
 
-        circleColorListAll = [[144,238,144]]*numSheep +[[250,128,114]]*numWolves
+        circleColorListAll = [[ 0,100,0]]*numSheep +[[139,0,0]]*numWolves
 
         screenColor = THECOLORS['black']
         circleColorListInMCTS = [THECOLORS['green'], THECOLORS['red'], THECOLORS['red']]
@@ -617,17 +617,18 @@ def main():
         if not os.path.exists(saveImageDir):
             os.makedirs(saveImageDir)
 
-        mctsRenderOn = True
+        mctsRenderOnSheep = False
         mctsRenderSheep = MCTSRender(numOfAgentInMCTS,sheepId, screen, screenWidth, screenHeight, screenColor, circleColorListInMCTS, mctsLineColor, circleSizeForMCTS, saveImage, saveImageDir, drawState, drawStateAllAgent,circleColorListAll, scalePos)
 
         wolvesId = 1
         mctsRenderWolf = MCTSRender(numOfAgentInMCTS,wolvesId, screen, screenWidth, screenHeight, screenColor, circleColorListInMCTS, mctsLineColor, circleSizeForMCTS, saveImage, saveImageDir, drawState,drawStateAllAgent,circleColorListAll, scalePos)
+        mctsRenderOnWolf = True
 
 
         numSimulationsWolf = 120
-        wolfLevel2GuidedMCTSPolicyGivenIntention = MCTS(numSimulationsWolf, selectChild, expandWolf, rolloutWolf, backup, establishPlainActionDist, mctsRenderWolf, mctsRenderOn)
+        wolfLevel2GuidedMCTSPolicyGivenIntention = MCTS(numSimulationsWolf, selectChild, expandWolf, rolloutWolf, backup, establishPlainActionDist, mctsRenderWolf, mctsRenderOnWolf)
         numSimulationsSheep = 50
-        sheepCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsSheep, selectChild, expandSheep, rolloutSheep, backup, establishPlainActionDist, mctsRenderSheep, mctsRenderOn)
+        sheepCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsSheep, selectChild, expandSheep, rolloutSheep, backup, establishPlainActionDist, mctsRenderSheep, mctsRenderOnSheep)
 
     #final individual polices
         softPolicyInPlanning = SoftPolicy(softParameterInPlanning)
