@@ -127,12 +127,21 @@ class MCTSRender():
                 if event.type == pg.QUIT:
                     pg.quit
 
+            if self.MCTSAgentId == 0:
+                agentPos = [np.int(np.array(nextPoses[0])[0]), np.int(np.array(nextPoses[0])[1])]
+                pg.draw.circle(surfaceToDraw, THECOLORS['white'], agentPos, self.circleSize+3)
+
+            elif self.MCTSAgentId == 1:
+                agentPos = [np.int(np.array(nextPoses[1])[0]), np.int(np.array(nextPoses[1])[1])]
+                agentPos2 = [np.int(np.array(nextPoses[2])[0]), np.int(np.array(nextPoses[2])[1])]
+                pg.draw.circle(surfaceToDraw, THECOLORS['white'], agentPos, self.circleSize+3)
+                pg.draw.circle(surfaceToDraw, THECOLORS['white'], agentPos2, self.circleSize+3)
+
             for i in range(self.numAgent):
                 oneAgentPosition = np.array(poses[i])
                 oneAgentNextPosition = np.array(nextPoses[i])
-                pg.draw.line(surfaceToDraw, self.mctsLineColor, [np.int(oneAgentPosition[0]), np.int(oneAgentPosition[1])], [np.int(oneAgentNextPosition[0]), np.int(oneAgentNextPosition[1])], lineWidth)
 
-                if i != 0:
+                if i == self.MCTSAgentId:
                     agentPos = [np.int(np.array(nextPoses[i])[0]), np.int(np.array(nextPoses[i])[1])]
                     pg.draw.circle(surfaceToDraw, THECOLORS['white'], agentPos, self.circleSize+3)
 
