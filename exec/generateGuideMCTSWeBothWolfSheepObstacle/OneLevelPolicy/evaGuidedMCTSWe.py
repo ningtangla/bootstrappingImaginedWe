@@ -34,12 +34,14 @@ if __name__ == '__main__':
         result = []
         for numOneWolfActionSpace in [9]:
             numWolves = 2
-            maxRunningSteps = 102
+            numSheep = 4
+            maxRunningSteps = 103
             softParameterInPlanning = 2.5
             sheepPolicyName = 'maxNNPolicy'
             wolfPolicyName = 'maxNNPolicy'
             trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
-                                         'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'numOneWolfActionSpace': numOneWolfActionSpace, 'numWolves': numWolves}
+                                         'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'numOneWolfActionSpace': numOneWolfActionSpace, 
+                                         'numWolves': numWolves, 'numSheep': numSheep}
 
             generateTrajectorySavePath = GetSavePath(trajectoriesSaveDirectory, trajectorySaveExtension, trajectoryFixedParameters)
 
@@ -48,7 +50,6 @@ if __name__ == '__main__':
             loadedTrajectories = loadTrajectories({'agentId': 1})
              
             MCTS = 'rollout'
-            numSheep = 2 
             trajectorySaveFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
                     'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'MCTS': MCTS, 'numSheep':numSheep, 'numWolves': numWolves}
             generateTrajectorySavePathForResave = GetSavePath(saveTrajectoriesSaveDirectory, trajectorySaveExtension, trajectorySaveFixedParameters)

@@ -33,17 +33,17 @@ def updateColorSpace(colorSpace, posterior, intentionSpace, imaginedWeIds):
 
 def main():
     DIRNAME = os.path.dirname(__file__)
-    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchy',
+    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchyGuidedMCTSBothWolfSheep',
                                     'trajectories')
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)
     
     NNNumSimulations = 200
-    maxRunningSteps = 100
+    maxRunningSteps = 101
     softParameterInPlanning = 2.5
-    sheepPolicyName = 'sampleNNPolicy'
-    wolfPolicyName = 'sampleNNPolicy'
-    hierarchy = 1
+    sheepPolicyName = 'maxNNPolicy'
+    wolfPolicyName = 'maxNNPolicy'
+    hierarchy = 2
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
             'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': hierarchy, 'NNNumSimulations': NNNumSimulations}
     trajectoryExtension = '.pickle'
@@ -71,7 +71,7 @@ def main():
     circleSize = 10
     positionIndex = [0, 1]
     agentIdsToDraw = list(range(numSheep + numWolves))
-    saveImage = False
+    saveImage = True
     imageSavePath = os.path.join(trajectoryDirectory, 'picMovingSheep')
     if not os.path.exists(imageSavePath):
         os.makedirs(imageSavePath)
@@ -81,7 +81,7 @@ def main():
         os.makedirs(saveImageDir)
     intentionSpace = list(it.product(range(numSheep)))
     imaginedWeIdsForInferenceSubject = list(range(numSheep, numWolves + numSheep))
-    softParameter = 0.91
+    softParameter = 0.7
     softFunction = SoftPolicy(softParameter)
     updateColorSpaceByPosterior = lambda colorSpace, posterior : updateColorSpace(
             colorSpace, [softFunction(individualPosterior) for individualPosterior in posterior], intentionSpace, imaginedWeIdsForInferenceSubject)
@@ -99,21 +99,21 @@ def main():
     yBoundary = [0,600]
     stayInBoundaryByReflectVelocity = StayInBoundaryByReflectVelocity(xBoundary, yBoundary)
     transit = TransitForNoPhysics(stayInBoundaryByReflectVelocity)
-    numFramesToInterpolate = 3
+    numFramesToInterpolate = 5
     interpolateState = InterpolateState(numFramesToInterpolate, transit)
     
     stateIndexInTimeStep = 0
     actionIndexInTimeStep = 1
     posteriorIndexInTimeStep = 3
     chaseTrial = ChaseTrialWithTraj(stateIndexInTimeStep, drawState, interpolateState, actionIndexInTimeStep, posteriorIndexInTimeStep)
-   
+    
     print(len(trajectories))
-    print(trajectories[0][0])
+    lens = [len(trajectory) for trajectory in trajectories]
+    index = np.argsort(-np.array(lens))
+    print(index)
     print(trajectories[0][1])
-    print(trajectories[0][2])
-    print(trajectories[0][3])
-    print(trajectories[0][4])
-    [chaseTrial(trajectory) for trajectory in np.array(trajectories)[0:]]
-    #[24 for 8intentions]
+    [chaseTrial(trajectory) for trajectory in np.array(trajectories)[index[[15, 16, 17, 18, 19, 20]]]]
+    #[chaseTrial(trajectory) for trajectory in np.array(trajectories)[index[15:]]]
+
 if __name__ == '__main__':
     main()
