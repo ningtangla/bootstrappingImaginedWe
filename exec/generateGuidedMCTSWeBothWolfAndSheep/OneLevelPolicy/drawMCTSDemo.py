@@ -142,10 +142,8 @@ class MCTSRender():
                 oneAgentNextPosition = np.array(nextPoses[i])
 
                 # mcts line
-                pg.draw.line(surfaceToDraw, self.mctsLineColor, [np.int(oneAgentPosition[0]), np.int(oneAgentPosition[1])], [np.int(oneAgentNextPosition[0]), np.int(oneAgentNextPosition[1])], lineWidth)
-
-                # mcts circle
-
+                if i != 0:
+                    pg.draw.line(surfaceToDraw, self.mctsLineColor, [np.int(oneAgentPosition[0]), np.int(oneAgentPosition[1])], [np.int(oneAgentNextPosition[0]), np.int(oneAgentNextPosition[1])], lineWidth)
 
                 pg.draw.circle(surfaceToDraw, self.circleColorList[i], [np.int(oneAgentNextPosition[0]), np.int(oneAgentNextPosition[1])], self.circleSize)
 
@@ -600,12 +598,12 @@ def main():
         scaledYRange = [0, 600]
         scalePos = ScalePos(posIndex, rawXRange, rawYRange, scaledXRange, scaledYRange)
 
-        saveImage = 1
+        saveImage = 0
         saveImageDir = os.path.join(dirName, '..', '..', '..', 'data', 'demoImg')
         if not os.path.exists(saveImageDir):
             os.makedirs(saveImageDir)
 
-        mctsRenderOnSheep = True
+        mctsRenderOnSheep = False
         mctsRenderSheep = MCTSRender(numOfAgentInMCTS,sheepId, screen, screenWidth, screenHeight, screenColor, circleColorListInMCTS, mctsLineColor, circleSizeForMCTS, saveImage, saveImageDir, drawState, drawStateAllAgent,circleColorListAll, scalePos)
 
         wolvesId = 1
