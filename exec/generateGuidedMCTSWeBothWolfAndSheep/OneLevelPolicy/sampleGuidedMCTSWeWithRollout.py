@@ -64,7 +64,7 @@ def main():
     numOneWolfActionSpace = 9
     NNNumSimulations = 200 #300 with distance Herustic; 200 without distanceHerustic
     numWolves = 2
-    maxRunningSteps = 101
+    maxRunningSteps = 103
     softParameterInPlanning = 2.5
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'maxNNPolicy'
@@ -206,7 +206,7 @@ def main():
         selectChild = SelectChild(calculateScore)
 
         # prior
-        softParameterInGuide = 1
+        softParameterInGuide = 0.8
         softPolicyInGuide = SoftPolicy(softParameterInGuide)
         softSheepParameterInGuide = softParameterInGuide
         softSheepPolicyInGuide = SoftPolicy(softSheepParameterInGuide)
@@ -239,7 +239,7 @@ def main():
         getSheepPos = GetAgentPosFromState(sheepId, posIndexInState)
         getWolvesPoses = [GetAgentPosFromState(wolfId, posIndexInState) for wolfId in range(1, numWolves + 1)]
 
-        minDistance = 400
+        minDistance = 350
         rolloutHeuristicWeightWolf = 0
         rolloutHeuristicsWolf = [reward.HeuristicDistanceToTarget(rolloutHeuristicWeightWolf, getWolfPos, getSheepPos, minDistance)
             for getWolfPos in getWolvesPoses]
@@ -274,9 +274,9 @@ def main():
         maxRolloutSteps = 5
         rolloutSheep = RollOut(rolloutPolicySheep, maxRolloutSteps, transitInMCTSSheep, rewardFunctionSheep, isTerminalInMCTS, rolloutHeuristicSheep)
 
-        numSimulationsWolf = 100
+        numSimulationsWolf = 200
         wolfCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsWolf, selectChild, expandWolf, rolloutWolf, backup, establishPlainActionDist)
-        numSimulationsSheep = 10
+        numSimulationsSheep = 50
         sheepCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsSheep, selectChild, expandSheep, rolloutSheep, backup, establishPlainActionDist)
 
 	#final individual polices

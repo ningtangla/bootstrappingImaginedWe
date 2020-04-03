@@ -52,7 +52,7 @@ def main():
     numOneWolfActionSpace = 8
     precision = 1.83
     NNNumSimulations = 300
-    maxRunningSteps = 100
+    maxRunningSteps = 101
     softParameterInPlanning = 2.5
     sheepPolicyName = 'sampleNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
@@ -85,7 +85,7 @@ def main():
         
         group.index = group.index.droplevel('numWolves')
         group.index.name = 'Regulater and Partner type'
-        group.index = ['regulateOn, uncooperative', 'regulateOn, cooperative', 'regulateOff, cooperative']
+        group.index = ['regulate, uncooperative partner', 'regulate, cooperative partner', 'no regulate, uncooperative partner']
         group.plot.line(ax = axForDraw, y = 'mean', yerr = 'se', label = '', xlim = (-0.1, 2.1), ylim = (-.2, 0.4), marker = 'o', rot = 0 )
         plotCounter = plotCounter + 1
 

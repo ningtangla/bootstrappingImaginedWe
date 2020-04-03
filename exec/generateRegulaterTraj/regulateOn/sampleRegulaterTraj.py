@@ -77,13 +77,13 @@ def main():
         os.makedirs(trajectoriesSaveDirectory)
 
     trajectorySaveExtension = '.pickle'
-    reCommitProbability = 1
+    reCommitProbability = 0.5
     precision = 1.83
     regulateOn = 1
     numOneWolfActionSpace = 8
     NNNumSimulations = 300 #300 with distance Herustic; 200 without distanceHerustic
     numWolves = 2
-    maxRunningSteps = 100
+    maxRunningSteps = 101
     softParameterInPlanning = 2.5
     sheepPolicyName = 'sampleNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
@@ -92,7 +92,8 @@ def main():
             'reCommitedProbability': reCommitProbability, 'regulateOn': regulateOn, 'precision': precision}
 
     generateTrajectorySavePath = GetSavePath(trajectoriesSaveDirectory, trajectorySaveExtension, trajectoryFixedParameters)
-    trajectorySavePath = generateTrajectorySavePath(parametersForTrajectoryPath)
+    #trajectorySavePath = generateTrajectorySavePath(parametersForTrajectoryPath)
+    trajectorySavePath = generateTrajectorySavePath({})
 
 
     if not os.path.isfile(trajectorySavePath):
@@ -119,7 +120,7 @@ def main():
         sheepImagindWeIntentionPrior = {tuple(range(numSheep, numSheep + numWolves)): 1}
         #wolfImaginedWeIntentionPrior = {(sheepId, ): 1/numSheep for sheepId in range(numSheep)}
         committedFirstSheepId = 0
-        wolfImaginedWeIntentionPrior = {(committedFirstSheepId, ): 1}
+        wolfImaginedWeIntentionPrior = {(committedFirstSheepId, ): 0.999, (1, ):0.001}
         imaginedWeIntentionPriors = [sheepImagindWeIntentionPrior] * numSheep + [wolfImaginedWeIntentionPrior] * numWolves
 
         # Percept Action
@@ -336,6 +337,7 @@ def main():
         trajectories = [sampleTrajectory(policy) for trjaectoryIndex in range(startSampleIndex, endSampleIndex)]
         saveToPickle(trajectories, trajectorySavePath)
         print([len(traj) for traj in trajectories])
+        #print(trajectories[0][8])
 
 
 if __name__ == '__main__':

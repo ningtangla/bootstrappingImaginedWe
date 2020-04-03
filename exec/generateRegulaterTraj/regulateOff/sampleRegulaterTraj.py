@@ -83,7 +83,7 @@ def main():
     numOneWolfActionSpace = 8
     NNNumSimulations = 300 #300 with distance Herustic; 200 without distanceHerustic
     numWolves = 2
-    maxRunningSteps = 100
+    maxRunningSteps = 101
     softParameterInPlanning = 2.5
     sheepPolicyName = 'sampleNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
@@ -119,7 +119,7 @@ def main():
         sheepImagindWeIntentionPrior = {tuple(range(numSheep, numSheep + numWolves)): 1}
         #wolfImaginedWeIntentionPrior = {(sheepId, ): 1/numSheep for sheepId in range(numSheep)}
         committedFirstSheepId = 0
-        wolfImaginedWeIntentionPrior = {(committedFirstSheepId, ): 1}
+        wolfImaginedWeIntentionPrior = {(committedFirstSheepId, ): 0.999, (1, ): 0.001}
         imaginedWeIntentionPriors = [sheepImagindWeIntentionPrior] * numSheep + [wolfImaginedWeIntentionPrior] * numWolves
 
         # Percept Action

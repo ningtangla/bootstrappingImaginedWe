@@ -23,6 +23,7 @@ from src.MDPChasing.envNoPhysics import TransitForNoPhysics, StayInBoundaryByRef
 from src.MDPChasing.policies import SoftPolicy
 
 def updateColorSpace(colorSpace, posterior, intentionSpace, imaginedWeIds):
+    #__import__('ipdb').set_trace()
     intentionProbabilities = np.mean([[max(0, 1 * (posterior[individualId][intention] - 1/len(intentionSpace))) 
         for intention in intentionSpace] for individualId in imaginedWeIds], axis = 0)
     colorRepresentProbability = np.array([np.array([0, 170, 0]) * probability for probability in intentionProbabilities]) + np.array(
@@ -39,7 +40,7 @@ def main():
         os.makedirs(trajectoryDirectory)
     
     NNNumSimulations = 200
-    maxRunningSteps = 102
+    maxRunningSteps = 105
     softParameterInPlanning = 2.5
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'maxNNPolicy'
@@ -64,17 +65,16 @@ def main():
     yBoundary = [0, 600]
     lineColor = THECOLORS['white']
     lineWidth = 4
-    xObstacles = [[100, 200], [400, 500]]
-    yObstacles = [[100, 200], [400, 500]]
+    xObstacles = [[120, 220], [380, 480]]
+    yObstacles = [[120, 220], [380, 480]]
     drawBackground = DrawBackground(screen, screenColor, xBoundary, yBoundary, lineColor, lineWidth, xObstacles, yObstacles)
     
     FPS = 30
-    numSheep = 2
     circleColorSpace = [[100, 100, 100]]*numSheep + [[255, 255, 255]] * numWolves
     circleSize = 10
     positionIndex = [0, 1]
     agentIdsToDraw = list(range(numSheep + numWolves))
-    saveImage = False
+    saveImage = True
     imageSavePath = os.path.join(trajectoryDirectory, 'picMovingSheep')
     if not os.path.exists(imageSavePath):
         os.makedirs(imageSavePath)
@@ -84,7 +84,7 @@ def main():
         os.makedirs(saveImageDir)
     intentionSpace = list(it.product(range(numSheep)))
     imaginedWeIdsForInferenceSubject = list(range(numSheep, numWolves + numSheep))
-    softParameter = 0.05
+    softParameter = 0.1
     softFunction = SoftPolicy(softParameter)
     updateColorSpaceByPosterior = lambda colorSpace, posterior : updateColorSpace(
             colorSpace, [softFunction(individualPosterior) for individualPosterior in posterior], intentionSpace, imaginedWeIdsForInferenceSubject)
@@ -114,8 +114,8 @@ def main():
     index = np.argsort(-np.array(lens))
     print(index)
     print(trajectories[0][1])
-    #[chaseTrial(trajectory) for trajectory in np.array(trajectories)[index[[1,5,7,12]]]]
-    [chaseTrial(trajectory) for trajectory in np.array(trajectories)[index]]
+    [chaseTrial(trajectory) for trajectory in np.array(trajectories)[index[[6,7,8,10,12,13]]]]
+    #[chaseTrial(trajectory) for trajectory in np.array(trajectories)[index[6:]]]
     #[24 for 8intentions]
 if __name__ == '__main__':
     main()
