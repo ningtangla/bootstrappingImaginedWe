@@ -127,22 +127,17 @@ class MCTSRender():
                 if event.type == pg.QUIT:
                     pg.quit
 
-            if self.MCTSAgentId == 0:
-                agentPos = [np.int(np.array(nextPoses[0])[0]), np.int(np.array(nextPoses[0])[1])]
-                pg.draw.circle(surfaceToDraw, THECOLORS['white'], agentPos, self.circleSize+3)
-
-            elif self.MCTSAgentId == 1:
-                agentPos = [np.int(np.array(nextPoses[1])[0]), np.int(np.array(nextPoses[1])[1])]
-                agentPos2 = [np.int(np.array(nextPoses[2])[0]), np.int(np.array(nextPoses[2])[1])]
-                pg.draw.circle(surfaceToDraw, THECOLORS['white'], agentPos, self.circleSize+3)
-                pg.draw.circle(surfaceToDraw, THECOLORS['white'], agentPos2, self.circleSize+3)
-
             for i in range(self.numAgent):
                 oneAgentPosition = np.array(poses[i])
                 oneAgentNextPosition = np.array(nextPoses[i])
 
                 if i != 0:
                     pg.draw.line(surfaceToDraw, self.mctsLineColor, [np.int(oneAgentPosition[0]), np.int(oneAgentPosition[1])], [np.int(oneAgentNextPosition[0]), np.int(oneAgentNextPosition[1])], lineWidth)
+
+                if i == self.MCTSAgentId:
+                    agentPos = [np.int(np.array(nextPoses[i])[0]), np.int(np.array(nextPoses[i])[1])]
+                    pg.draw.circle(surfaceToDraw, THECOLORS['white'], agentPos, self.circleSize+3)
+
 
                 pg.draw.circle(surfaceToDraw, self.circleColorList[i], [np.int(oneAgentNextPosition[0]), np.int(oneAgentNextPosition[1])], self.circleSize)
 
@@ -341,7 +336,7 @@ def main():
         os.makedirs(trajectoriesSaveDirectory)
 
     trajectorySaveExtension = '.pickle'
-    numOneWolfActionSpace = 5
+    numOneWolfActionSpace = 9
     NNNumSimulations = 200 #300 with distance Herustic; 200 without distanceHerustic
     numWolves = 2
     maxRunningSteps = 100
@@ -386,9 +381,9 @@ def main():
             for weIdCopy, selfId in zip(imaginedWeIdCopys, list(range(numWolves)))]
 
         numStateSpace = 2 * (numWolves + 1)
-        #actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
-        #              (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
-        actionSpace = [(10, 0), (0, 10), (-10, 0), (0, -10), (0, 0)]
+        actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
+                      (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
+        #actionSpace = [(10, 0), (0, 10), (-10, 0), (0, -10), (0, 0)]
         predatorPowerRatio = 8
         wolfIndividualActionSpace = list(map(tuple, np.array(actionSpace) * predatorPowerRatio))
         mappingActionToAnotherSpace = MappingActionToAnotherSpace(wolfIndividualActionSpace)
