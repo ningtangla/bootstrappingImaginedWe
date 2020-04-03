@@ -65,7 +65,6 @@ class MCTS:
             while currentNode.isExpanded:
                 nextNode = self.selectChild(currentNode)
                 if self.mctsRenderOn:
-                    print(self.allAgentsState)
                     backgroundScreen = self.mctsRender(currentNode, nextNode, backgroundScreen, self.allAgentsState)
                 nodePath.append(nextNode)
                 currentNode = nextNode
@@ -364,8 +363,8 @@ def main():
         # MDP Env
         xBoundary = [0, 600]
         yBoundary = [0, 600]
-        xObstacles = [[100, 200], [400, 500]]
-        yObstacles = [[100, 200], [400, 500]]
+        xObstacles = [[120, 220], [380, 480]]
+        yObstacles = [[120, 220], [380, 480]]
         numSheep = 2
         numOfAgent = numWolves + numSheep
         isLegal = lambda state: not(np.any([(xObstacle[0]<state[0]) and (xObstacle[1]>state[0]) and (yObstacle[0]<state[1]) and (yObstacle[1]>state[1]) for xObstacle, yObstacle in zip(xObstacles, yObstacles)]))

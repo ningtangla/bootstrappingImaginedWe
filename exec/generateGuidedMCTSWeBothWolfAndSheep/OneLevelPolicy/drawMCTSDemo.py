@@ -17,9 +17,10 @@ import itertools as it
 import pathos.multiprocessing as mp
 import math
 import pygame as pg
+from pygame.color import THECOLORS
 from anytree import AnyNode as Node
 
-from src.algorithms.mcts import ScoreChild, SelectChild, InitializeChildren, backup, establishPlainActionDist, Expand, RollOut, establishSoftmaxActionDist
+from src.algorithms.mcts import ScoreChild, SelectChild, InitializeChildren, MCTS, backup, establishPlainActionDist, Expand, RollOut, establishSoftmaxActionDist
 from src.MDPChasing.state import GetAgentPosFromState, GetStateForPolicyGivenIntention
 from src.MDPChasing.policies import RandomPolicy, PolicyOnChangableIntention, SoftPolicy, RecordValuesForPolicyAttributes, ResetPolicy
 from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal, InterpolateState
@@ -34,11 +35,11 @@ from src.inference.inference import CalPolicyLikelihood, InferOneStep, InferOnTr
 from src.evaluation import ComputeStatistics
 from src.valueFromNode import EstimateValueFromNode
 from src.MDPChasing import reward
+from src.visualization import drawDemo
 
 def sortSelfIdFirst(weId, selfId):
     weId.insert(0, weId.pop(selfId))
     return weId
-
 
 class MCTS:
     def __init__(self, numSimulation, selectChild, expand, estimateValue, backup, outputDistribution, mctsRender, mctsRenderOn):
@@ -50,6 +51,7 @@ class MCTS:
         self.outputDistribution = outputDistribution
         self.mctsRender = mctsRender
         self.mctsRenderOn = mctsRenderOn
+        self.allAgentsState = None
 
     def __call__(self, currentState):
         backgroundScreen = None
@@ -63,7 +65,7 @@ class MCTS:
             while currentNode.isExpanded:
                 nextNode = self.selectChild(currentNode)
                 if self.mctsRenderOn:
-                    backgroundScreen = self.mctsRender(currentNode, nextNode, backgroundScreen)
+                    backgroundScreen = self.mctsRender(currentNode, nextNode, backgroundScreen, self.allAgentsState)
                 nodePath.append(nextNode)
                 currentNode = nextNode
 
@@ -73,9 +75,11 @@ class MCTS:
         actionDistribution = self.outputDistribution(root)
         return actionDistribution
 
+
 class MCTSRender():
-    def __init__(self, numAgent, screen, surfaceWidth, surfaceHeight, screenColor, circleColorList, mctsLineColor, circleSize, saveImage, saveImageDir, drawState, scalePos):
+    def __init__(self, numAgent,MCTSAgentId, screen, surfaceWidth, surfaceHeight, screenColor, circleColorList, mctsLineColor, circleSize, saveImage, saveImageDir, drawState,drawStateAllAgent,circleColorListAll, scalePos):
         self.numAgent = numAgent
+        self.MCTSAgentId = MCTSAgentId
         self.screen = screen
         self.surfaceWidth = surfaceWidth
         self.surfaceHeight = surfaceHeight
@@ -86,13 +90,14 @@ class MCTSRender():
         self.saveImage = saveImage
         self.saveImageDir = saveImageDir
         self.drawState = drawState
+        self.drawStateAllAgent = drawStateAllAgent
+        self.circleColorListAll = circleColorListAll
         self.scalePos = scalePos
 
-    def __call__(self, currNode, nextNode, backgroundScreen):
+    def __call__(self, currNode, nextNode, backgroundScreen,allAgentsState):
         parentNumVisit = currNode.numVisited
         parentValueToTal = currNode.sumValue
         originalState = list(currNode.id.values())[0]
-        print(originalState)
         poses = self.scalePos(originalState)
 
         childNumVisit = nextNode.numVisited
@@ -100,14 +105,11 @@ class MCTSRender():
         originalNextState = list(nextNode.id.values())[0]
         nextPoses = self.scalePos(originalNextState)
 
-        if not os.path.exists(self.saveImageDir):
-            os.makedirs(self.saveImageDir)
-
         lineWidth = math.ceil(0.3 * (nextNode.numVisited + 1))
         surfaceToDraw = pg.Surface((self.surfaceWidth, self.surfaceHeight))
         surfaceToDraw.fill(self.screenColor)
         if backgroundScreen == None:
-            backgroundScreen = self.drawState(poses, self.circleColorList)
+            backgroundScreen = self.drawStateAllAgent(allAgentsState, self.circleColorListAll)
             if self.saveImage == True:
                 for numStaticImage in range(120):
                     filenameList = os.listdir(self.saveImageDir)
@@ -125,11 +127,24 @@ class MCTSRender():
                 if event.type == pg.QUIT:
                     pg.quit
 
+            if self.MCTSAgentId == 0:
+                agentPos = [np.int(np.array(nextPoses[0])[0]), np.int(np.array(nextPoses[0])[1])]
+                pg.draw.circle(surfaceToDraw, THECOLORS['white'], agentPos, self.circleSize+3)
+
+            elif self.MCTSAgentId == 1:
+                agentPos = [np.int(np.array(nextPoses[1])[0]), np.int(np.array(nextPoses[1])[1])]
+                agentPos2 = [np.int(np.array(nextPoses[2])[0]), np.int(np.array(nextPoses[2])[1])]
+                pg.draw.circle(surfaceToDraw, THECOLORS['white'], agentPos, self.circleSize+3)
+                pg.draw.circle(surfaceToDraw, THECOLORS['white'], agentPos2, self.circleSize+3)
+
             for i in range(self.numAgent):
                 oneAgentPosition = np.array(poses[i])
                 oneAgentNextPosition = np.array(nextPoses[i])
-                if i != 0:  # draw mcts line for wolves
+
+                # mcts line
+                if i != 0:
                     pg.draw.line(surfaceToDraw, self.mctsLineColor, [np.int(oneAgentPosition[0]), np.int(oneAgentPosition[1])], [np.int(oneAgentNextPosition[0]), np.int(oneAgentNextPosition[1])], lineWidth)
+
                 pg.draw.circle(surfaceToDraw, self.circleColorList[i], [np.int(oneAgentNextPosition[0]), np.int(oneAgentNextPosition[1])], self.circleSize)
 
             self.screen.blit(surfaceToDraw, (0, 0))
@@ -140,6 +155,92 @@ class MCTSRender():
                 filenameList = os.listdir(self.saveImageDir)
                 pg.image.save(self.screen, self.saveImageDir + '/' + str(len(filenameList)) + '.png')
         return self.screen
+
+
+class Render():
+    def __init__(self, numOfAgent, posIndex, screen, screenColor, circleColorList, circleSize, saveImage, saveImageDir):
+        self.numOfAgent = numOfAgent
+        self.posIndex = posIndex
+        self.screen = screen
+        self.screenColor = screenColor
+        self.circleColorList = circleColorList
+        self.circleSize = circleSize
+        self.saveImage = saveImage
+        self.saveImageDir = saveImageDir
+
+    def __call__(self, interpolatedStates):
+        for j in range(1):
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    pg.quit()
+
+            self.screen.fill(self.screenColor)
+            for interpolatedState in interpolatedStates:
+                for i in range(self.numOfAgent):
+                    agentPos = interpolatedState[i][self.posIndex]
+                    pg.draw.circle(self.screen, self.circleColorList[i], [np.int(
+                        agentPos[0]), np.int(agentPos[1])], self.circleSize)
+                if self.saveImage == True:
+                    for numStaticImage in range(30):
+                        filenameList = os.listdir(self.saveImageDir)
+                        pg.image.save(self.screen, self.saveImageDir + '/' + str(len(filenameList)) + '.png')
+
+                self.screen.fill(self.screenColor)
+                pg.display.flip()
+                pg.time.wait(1)
+
+class SampleTrajectoryWithRender:
+    def __init__(self, maxRunningSteps, transit, isTerminal, reset, chooseAction,interpolateStateForDemo, resetPolicy=None, recordActionForPolicy=None, render=None, renderOn=False):
+        self.maxRunningSteps = maxRunningSteps
+        self.transit = transit
+        self.isTerminal = isTerminal
+        self.reset = reset
+        self.chooseAction = chooseAction
+        self.resetPolicy = resetPolicy
+        self.recordActionForPolicy = recordActionForPolicy
+        self.render = render
+        self.renderOn = renderOn
+        self.interpolateStateForDemo = interpolateStateForDemo
+        self.runningStep = 0
+
+    def __call__(self, policy):
+        state = self.reset()
+
+        while self.isTerminal(state):
+            state = self.reset()
+
+        trajectory = []
+        for runningStep in range(self.maxRunningSteps):
+            if self.isTerminal(state):
+                trajectory.append((state, None, None))
+                break
+
+            if self.renderOn and self.runningStep==0:
+                self.render([state])
+            self.runningStep+=1
+
+            actionDists = policy(state)
+            action = [choose(action) for choose, action in zip(self.chooseAction, actionDists)]
+
+            if self.renderOn:
+                interpolatedStates = self.interpolateStateForDemo(state,action)
+                self.render(interpolatedStates)
+
+            trajectory.append((state, action, actionDists))
+            nextState = self.transit(state, action)
+            state = nextState
+            if self.recordActionForPolicy:
+                self.recordActionForPolicy([action])
+
+        if self.resetPolicy:
+            policyAttributes = self.resetPolicy()
+            if policyAttributes:
+                trajectoryWithPolicyAttrVals = [tuple(list(stateActionPair) + list(policyAttribute))
+                                                for stateActionPair, policyAttribute in zip(trajectory, policyAttributes)]
+                trajectory = trajectoryWithPolicyAttrVals.copy()
+        return trajectory
+
+
 
 class DrawBackground:
     def __init__(self, screen, screenColor, xBoundary, yBoundary, lineColor, lineWidth):
@@ -158,8 +259,8 @@ class DrawBackground:
                 if event.key == pg.K_ESCAPE:
                     exit()
         self.screen.fill(self.screenColor)
-        rectPos = [self.xBoundary[0], self.yBoundary[0], self.xBoundary[1], self.yBoundary[1]]
         return
+
 
 class DrawState():
     def __init__(self, screen, circleSize, numOfAgent, positionIndex, drawBackGround):
@@ -171,15 +272,16 @@ class DrawState():
 
     def __call__(self, state, circleColorList):
         self.drawBackGround()
-
         for agentIndex in range(self.numOfAgent):
             agentPos = [np.int(state[agentIndex][self.xIndex]), np.int(state[agentIndex][self.yIndex])]
             agentColor = circleColorList[agentIndex]
             pg.draw.circle(self.screen, agentColor, agentPos, self.circleSize)
+
         pg.display.flip()
         pg.time.wait(10)
 
         return self.screen
+
 
 class ScalePos:
     def __init__(self, positionIndex, rawXRange, rawYRange, scaledXRange, scaledYRange):
@@ -205,13 +307,25 @@ class ScalePos:
 
         return adjustedPoses
 
+class Policy:
+    def __init__(self, individiualPolicies, MCTSPolicies, attribute):
+        self.individiualPolicies = individiualPolicies
+        self.MCTSPolicies = MCTSPolicies
+        self.attribute = attribute
+
+    def __call__(self, state):
+        attributeValue = state
+        [setattr(MCTSPolicy, self.attribute, attributeValue) for MCTSPolicy in self.MCTSPolicies]
+        actionDists = [individualPolicy(state) for individualPolicy in self.individiualPolicies]
+        return actionDists
+
 def main():
     DEBUG = 1
     renderOn = 1
     if DEBUG:
         parametersForTrajectoryPath = {}
         startSampleIndex = 0
-        endSampleIndex = 7
+        endSampleIndex = 4
         agentId = 1
         parametersForTrajectoryPath['sampleIndex'] = (startSampleIndex, endSampleIndex)
     else:
@@ -223,18 +337,18 @@ def main():
 
     # check file exists or not
     dirName = os.path.dirname(__file__)
-    trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRollout', 'OneLeveLPolicy', 'trajectories')
+    trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRolloutBothWolfSheep', 'OneLeveLPolicy', 'trajectories')
     if not os.path.exists(trajectoriesSaveDirectory):
         os.makedirs(trajectoriesSaveDirectory)
 
     trajectorySaveExtension = '.pickle'
-    numOneWolfActionSpace = 5
+    numOneWolfActionSpace = 9
     NNNumSimulations = 200 #300 with distance Herustic; 200 without distanceHerustic
     numWolves = 2
     maxRunningSteps = 101
     softParameterInPlanning = 2.5
-    sheepPolicyName = 'sampleNNPolicy'
-    wolfPolicyName = 'sampleNNPolicy'
+    sheepPolicyName = 'maxNNPolicy'
+    wolfPolicyName = 'maxNNPolicy'
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
             'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'numOneWolfActionSpace': numOneWolfActionSpace, 'numWolves': numWolves}
 
@@ -282,10 +396,13 @@ def main():
         sheepUpdateIntentionMethod = noInferIntention
 
         # Policy Likelihood function: Wolf Centrol Control NN Policy Given Intention
-        numStateSpace = 2 * (numSheep + numWolves - 1)
-        #actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
-         #              (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
-        actionSpace = [(10, 0), (0, 10), (-10, 0), (0, -10), (0, 0)]
+        numStateSpace = 2 * (numWolves + 1)
+        if numOneWolfActionSpace==9:
+
+            actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
+                           (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
+        elif numOneWolfActionSpace==5:
+            actionSpace = [(10, 0), (0, 10), (-10, 0), (0, -10), (0, 0)]
         predatorPowerRatio = 8
         wolfIndividualActionSpace = list(map(tuple, np.array(actionSpace) * predatorPowerRatio))
         wolfCentralControlActionSpace = list(it.product(wolfIndividualActionSpace, repeat = numWolves))
@@ -373,7 +490,12 @@ def main():
         selectChild = SelectChild(calculateScore)
 
         # prior
-        getActionPrior = wolfCentralControlPolicyGivenIntention
+        softParameterInGuide = 1
+        softPolicyInGuide = SoftPolicy(softParameterInGuide)
+        softSheepParameterInGuide = softParameterInGuide
+        softSheepPolicyInGuide = SoftPolicy(softSheepParameterInGuide)
+        getActionPriorWolf = lambda state: softPolicyInGuide(wolfCentralControlPolicyGivenIntention(state))
+        getActionPriorSheep = lambda state: softSheepPolicyInGuide(sheepCentralControlPolicyGivenIntention(state))
 
         # terminal and transit InMCTS
         possiblePreyIdsInMCTS = [0]
@@ -383,86 +505,123 @@ def main():
         isTerminalInMCTS = IsTerminal(killzoneRadius, getPreyPosInMCTS, getPredatorPosInMCTS)
         numFrameToInterpolate = 3
         interpolateStateInMCTS = InterpolateState(3, transit, isTerminalInMCTS)
-        transitInMCTS = lambda state, wolfCentrolControlAction : interpolateStateInMCTS(state, np.concatenate([sampleFromDistribution(sheepCentralControlPolicyGivenIntention(state)),
+        transitInMCTSWolf = lambda state, wolfCentrolControlAction : interpolateStateInMCTS(state, np.concatenate([sampleFromDistribution(sheepCentralControlPolicyGivenIntention(state)),
             wolfCentrolControlAction]))
+        transitInMCTSSheep = lambda state, sheepCentrolControlAction : interpolateStateInMCTS(state, np.concatenate([sheepCentrolControlAction,
+            sampleFromDistribution(wolfCentralControlPolicyGivenIntention(state))]))
 
         # initialize children; expand
-        initializeChildren = InitializeChildren(
-            wolfCentralControlActionSpace, transitInMCTS, getActionPrior)
-        expand = Expand(isTerminalInMCTS, initializeChildren)
+        initializeChildrenWolf = InitializeChildren(
+            wolfCentralControlActionSpace, transitInMCTSWolf, getActionPriorWolf)
+        expandWolf = Expand(isTerminalInMCTS, initializeChildrenWolf)
+        initializeChildrenSheep = InitializeChildren(
+            sheepCentralControlActionSpace, transitInMCTSSheep, getActionPriorSheep)
+        expandSheep = Expand(isTerminalInMCTS, initializeChildrenSheep)
 
         #Rollout Value
-        rolloutHeuristicWeight = 1e-2
         sheepId = 0
         getSheepPos = GetAgentPosFromState(sheepId, posIndexInState)
         getWolvesPoses = [GetAgentPosFromState(wolfId, posIndexInState) for wolfId in range(1, numWolves + 1)]
 
         minDistance = 400
-        rolloutHeuristics = [reward.HeuristicDistanceToTarget(rolloutHeuristicWeight, getWolfPos, getSheepPos, minDistance)
+        rolloutHeuristicWeightWolf = 0
+        rolloutHeuristicsWolf = [reward.HeuristicDistanceToTarget(rolloutHeuristicWeightWolf, getWolfPos, getSheepPos, minDistance)
             for getWolfPos in getWolvesPoses]
 
-        rolloutHeuristic = lambda state: np.mean([rolloutHeuristic(state)
-            for rolloutHeuristic in rolloutHeuristics])
+        rolloutHeuristicWolf = lambda state: np.mean([rolloutHeuristic(state)
+            for rolloutHeuristic in rolloutHeuristicsWolf])
 
-        rolloutPolicy = lambda state: wolfCentralControlActionSpace[np.random.choice(range(numWolvesActionSpace))]
+        rolloutPolicyWolf = lambda state: wolfCentralControlActionSpace[np.random.choice(range(numWolvesActionSpace))]
 
-        aliveBonus = -1 / maxRunningSteps
-        deathPenalty = 1
-        rewardFunction = reward.RewardFunctionCompete(
-            aliveBonus, deathPenalty, isTerminalInMCTS)
+        aliveBonusWolf = -1 / 10#maxRunningSteps
+        deathPenaltyWolf = 1
+        rewardFunctionWolf = reward.RewardFunctionCompete(
+            aliveBonusWolf, deathPenaltyWolf, isTerminalInMCTS)
 
         maxRolloutSteps = 5
-        rollout = RollOut(rolloutPolicy, maxRolloutSteps, transitInMCTS, rewardFunction, isTerminalInMCTS, rolloutHeuristic)
+        rolloutWolf = RollOut(rolloutPolicyWolf, maxRolloutSteps, transitInMCTSWolf, rewardFunctionWolf, isTerminalInMCTS, rolloutHeuristicWolf)
+
+        rolloutHeuristicWeightSheep = 0
+        rolloutHeuristicsSheep = [reward.HeuristicDistanceToTarget(rolloutHeuristicWeightSheep, getSheepPos, getSheepPos, minDistance)
+            for getSheepPos in getWolvesPoses]
+
+        rolloutHeuristicSheep = lambda state: np.mean([rolloutHeuristic(state)
+            for rolloutHeuristic in rolloutHeuristicsSheep])
+
+        rolloutPolicySheep = lambda state: sheepCentralControlActionSpace[np.random.choice(range(numSheepActionSpace))]
+
+        aliveBonusSheep = 1 / 10#maxRunningSteps
+        deathPenaltySheep = -1
+        rewardFunctionSheep = reward.RewardFunctionCompete(
+            aliveBonusSheep, deathPenaltySheep, isTerminalInMCTS)
+
+        maxRolloutSteps = 5
+        rolloutSheep = RollOut(rolloutPolicySheep, maxRolloutSteps, transitInMCTSSheep, rewardFunctionSheep, isTerminalInMCTS, rolloutHeuristicSheep)
 
 
-
+### mcts demo
         import pygame as pg
         from pygame.color import THECOLORS
-        screenWidth = 800
-        screenHeight = 800
+        screenWidth = 600
+        screenHeight = 600
 
         screen = pg.display.set_mode([xBoundary[1], yBoundary[1]])
         leaveEdgeSpace = 195
         lineWidth = 4
         circleSize = 10
-        xBoundary = [leaveEdgeSpace, screenWidth - leaveEdgeSpace * 2]
-        yBoundary = [leaveEdgeSpace, screenHeight - leaveEdgeSpace * 2]
+        # xBoundary = [leaveEdgeSpace, screenWidth - leaveEdgeSpace * 2]
+        # yBoundary = [leaveEdgeSpace, screenHeight - leaveEdgeSpace * 2]
         screenColor = THECOLORS['black']
         lineColor = THECOLORS['white']
 
-        posIndex = [0,1]
+        posIndex = [0, 1]
         drawBackground = DrawBackground(screen, screenColor, xBoundary, yBoundary, lineColor, lineWidth)
         numOfAgentInMCTS = numOfAgent - 1
-        drawStateWithRope = DrawState(screen, circleSize, numOfAgentInMCTS, posIndex, drawBackground)
+
+        outsideCircleSize = 15
+        outsideCircleColor = np.array([[255, 0, 0]] * numWolves)
+        drawState = DrawState(screen, circleSize, numOfAgentInMCTS, posIndex, drawBackground)
+
+        drawStateAllAgent = DrawState(screen, circleSize, numOfAgent, posIndex, drawBackground)
+
+        circleColorListAll = [[ 0,100,0]]*numSheep +[[139,0,0]]*numWolves
 
         screenColor = THECOLORS['black']
-        circleColorListInMCTS = [THECOLORS['green'], THECOLORS['yellow'], THECOLORS['red']]
+        circleColorListInMCTS = [THECOLORS['green'], THECOLORS['red'], THECOLORS['red']]
         mctsLineColor = np.array([240, 240, 240, 180])
         circleSizeForMCTS = int(0.6 * circleSize)
 
         circleSize = 10
-        rawXRange = [0, 800]
-        rawYRange = [0, 800]
-        scaledXRange = [200, 600]
-        scaledYRange = [200, 600]
+        rawXRange = [0, 600]
+        rawYRange = [0, 600]
+        scaledXRange = [0, 600]
+        scaledYRange = [0, 600]
         scalePos = ScalePos(posIndex, rawXRange, rawYRange, scaledXRange, scaledYRange)
 
-        saveImage = False
+        saveImage = 0
         saveImageDir = os.path.join(dirName, '..', '..', '..', 'data', 'demoImg')
         if not os.path.exists(saveImageDir):
             os.makedirs(saveImageDir)
 
-        mctsRenderOn = True
-        mctsRender = MCTSRender(numOfAgentInMCTS, screen, screenWidth, screenHeight, screenColor, circleColorListInMCTS, mctsLineColor, circleSizeForMCTS, saveImage, saveImageDir, drawStateWithRope, scalePos)
+        mctsRenderOnSheep = False
+        mctsRenderSheep = MCTSRender(numOfAgentInMCTS,sheepId, screen, screenWidth, screenHeight, screenColor, circleColorListInMCTS, mctsLineColor, circleSizeForMCTS, saveImage, saveImageDir, drawState, drawStateAllAgent,circleColorListAll, scalePos)
 
-        numSimulations = 100
-        wolfCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulations, selectChild, expand, rollout, backup, establishPlainActionDist, mctsRender, mctsRenderOn)
+        wolvesId = 1
+        mctsRenderOnWolf = True
+        mctsRenderWolf = MCTSRender(numOfAgentInMCTS,wolvesId, screen, screenWidth, screenHeight, screenColor, circleColorListInMCTS, mctsLineColor, circleSizeForMCTS, saveImage, saveImageDir, drawState,drawStateAllAgent,circleColorListAll, scalePos)
+
+
+        numSimulationsWolf = 100
+        wolfCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsWolf, selectChild, expandWolf, rolloutWolf, backup, establishPlainActionDist, mctsRenderWolf, mctsRenderOnWolf)
+        numSimulationsSheep = 40
+        sheepCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsSheep, selectChild, expandSheep, rolloutSheep, backup, establishPlainActionDist, mctsRenderSheep, mctsRenderOnSheep)
+
 
     #final individual polices
         softPolicyInPlanning = SoftPolicy(softParameterInPlanning)
         softSheepParameterInPlanning = softParameterInPlanning
         softSheepPolicyInPlanning = SoftPolicy(softSheepParameterInPlanning)
-        softenSheepCentralControlPolicyGivenIntentionInPlanning = lambda state: softSheepPolicyInPlanning(sheepCentralControlPolicyGivenIntention(state))
+        softenSheepCentralControlPolicyGivenIntentionInPlanning = lambda state: softSheepPolicyInPlanning(sheepCentralControlGuidedMCTSPolicyGivenIntention(state))
         softenWolfCentralControlPolicyGivenIntentionInPlanning = lambda state: softPolicyInPlanning(wolfCentralControlGuidedMCTSPolicyGivenIntention(state))
         centralControlPoliciesGivenIntentions = [softenSheepCentralControlPolicyGivenIntentionInPlanning] * numSheep + [softenWolfCentralControlPolicyGivenIntentionInPlanning] * numWolves
         planningIntervals = [1] * numSheep +  [1] * numWolves
@@ -492,15 +651,19 @@ def main():
         # Sample and Save Trajectory
         render = None
         if renderOn:
-            circleColorList = [THECOLORS['green'], THECOLORS['green'], THECOLORS['yellow'], THECOLORS['red']]
+            circleColorList = [THECOLORS['green'], THECOLORS['green'], THECOLORS['red'], THECOLORS['red']]
             render = Render(numOfAgent, posIndexInState, screen, screenColor, circleColorList, circleSize, saveImage, saveImageDir)
 
+        interpolateStateForDemo = drawDemo.InterpolateState(4, transit)
         interpolateStateInPlay = InterpolateState(3, transit, isTerminalInPlay)
         transitInPlay = lambda state, action : interpolateStateInPlay(state, action)
-
-        sampleTrajectory = SampleTrajectoryWithRender(maxRunningSteps, transitInPlay, isTerminalInPlay, reset, individualActionMethods, resetPolicy,
+        sampleTrajectory = SampleTrajectoryWithRender(maxRunningSteps, transitInPlay, isTerminalInPlay,
+                reset, individualActionMethods,interpolateStateForDemo, resetPolicy,
                 recordActionForPolicy, render, renderOn)
-        policy = lambda state: [individualPolicy(state) for individualPolicy in individualPolicies]
+
+        MCTSChangeAttribute = 'allAgentsState'
+        MCTSPolicies = [sheepCentralControlGuidedMCTSPolicyGivenIntention] * numSheep + [wolfCentralControlGuidedMCTSPolicyGivenIntention] * numWolves
+        policy = Policy(individualPolicies, MCTSPolicies, MCTSChangeAttribute)
 
         trajectories = [sampleTrajectory(policy) for trjaectoryIndex in range(startSampleIndex, endSampleIndex)]
         saveToPickle(trajectories, trajectorySavePath)
