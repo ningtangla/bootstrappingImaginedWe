@@ -141,9 +141,8 @@ class MCTSRender():
                 oneAgentPosition = np.array(poses[i])
                 oneAgentNextPosition = np.array(nextPoses[i])
 
-                if i == self.MCTSAgentId:
-                    agentPos = [np.int(np.array(nextPoses[i])[0]), np.int(np.array(nextPoses[i])[1])]
-                    pg.draw.circle(surfaceToDraw, THECOLORS['white'], agentPos, self.circleSize+3)
+                if i != 0:
+                    pg.draw.line(surfaceToDraw, self.mctsLineColor, [np.int(oneAgentPosition[0]), np.int(oneAgentPosition[1])], [np.int(oneAgentNextPosition[0]), np.int(oneAgentNextPosition[1])], lineWidth)
 
                 pg.draw.circle(surfaceToDraw, self.circleColorList[i], [np.int(oneAgentNextPosition[0]), np.int(oneAgentNextPosition[1])], self.circleSize)
 
