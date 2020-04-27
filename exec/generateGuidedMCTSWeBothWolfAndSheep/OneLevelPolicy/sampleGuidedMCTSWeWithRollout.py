@@ -61,10 +61,10 @@ def main():
         os.makedirs(trajectoriesSaveDirectory)
 
     trajectorySaveExtension = '.pickle'
-    numOneWolfActionSpace = 9
+    numOneWolfActionSpace = 5
     NNNumSimulations = 200 #300 with distance Herustic; 200 without distanceHerustic
-    numWolves = 2
-    maxRunningSteps = 103
+    numWolves = 3
+    maxRunningSteps = 100
     softParameterInPlanning = 2.5
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'maxNNPolicy'
@@ -116,9 +116,9 @@ def main():
 
         # Policy Likelihood function: Wolf Centrol Control NN Policy Given Intention
         numStateSpace = 2 * (numWolves + 1)
-        actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
-                       (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
-        #actionSpace = [(10, 0), (0, 10), (-10, 0), (0, -10), (0, 0)]
+        #actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
+        #               (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
+        actionSpace = [(10, 0), (0, 10), (-10, 0), (0, -10), (0, 0)]
         predatorPowerRatio = 8
         wolfIndividualActionSpace = list(map(tuple, np.array(actionSpace) * predatorPowerRatio))
         wolfCentralControlActionSpace = list(it.product(wolfIndividualActionSpace, repeat = numWolves))
@@ -206,7 +206,7 @@ def main():
         selectChild = SelectChild(calculateScore)
 
         # prior
-        softParameterInGuide = 0.8
+        softParameterInGuide = 1
         softPolicyInGuide = SoftPolicy(softParameterInGuide)
         softSheepParameterInGuide = softParameterInGuide
         softSheepPolicyInGuide = SoftPolicy(softSheepParameterInGuide)
@@ -274,9 +274,9 @@ def main():
         maxRolloutSteps = 5
         rolloutSheep = RollOut(rolloutPolicySheep, maxRolloutSteps, transitInMCTSSheep, rewardFunctionSheep, isTerminalInMCTS, rolloutHeuristicSheep)
 
-        numSimulationsWolf = 200
+        numSimulationsWolf = 150
         wolfCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsWolf, selectChild, expandWolf, rolloutWolf, backup, establishPlainActionDist)
-        numSimulationsSheep = 50
+        numSimulationsSheep = 20
         sheepCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsSheep, selectChild, expandSheep, rolloutSheep, backup, establishPlainActionDist)
 
 	#final individual polices
@@ -316,7 +316,7 @@ def main():
             import pygame as pg
             from pygame.color import THECOLORS
             screenColor = THECOLORS['black']
-            circleColorList = [THECOLORS['green'], THECOLORS['green'], THECOLORS['yellow'], THECOLORS['red']]
+            circleColorList = [THECOLORS['green']] * numSheep + [THECOLORS['red']] * numWolves
             circleSize = 10
 
             saveImage = False

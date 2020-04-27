@@ -63,8 +63,8 @@ def main():
     trajectorySaveExtension = '.pickle'
     numOneWolfActionSpace = 5
     NNNumSimulations = 200 #300 with distance Herustic; 200 without distanceHerustic
-    numWolves = 2
-    maxRunningSteps = 101
+    numWolves = 3
+    maxRunningSteps = 100
     softParameterInPlanning = 2.5
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'maxNNPolicy'
@@ -251,8 +251,8 @@ def main():
         actionIndexesInCentralControl = [wolvesImaginedWeIdInMCTS.index(wolfId) for wolfId in otherWolvesIdInMCTS]
         transitInMCTSWolf = lambda state, wolfLevel2Action : interpolateStateInMCTS(state, np.concatenate([sampleFromDistribution(sheepCentralControlPolicyGivenIntention(state)),
             wolfLevel2Action, np.array(sampleFromDistribution(wolfCentralControlPolicyGivenIntention(state)))[actionIndexesInCentralControl]]))
-        transitInMCTSSheep = lambda state, sheepCentrolControlAction : interpolateStateInMCTS(state, np.concatenate([sheepCentrolControlAction, 
-            sampleFromDistribution(wolfLevel2PolicyGivenIntention(state)), sampleFromDistribution(wolfLevel2PolicyGivenIntention(state))]))
+        transitInMCTSSheep = lambda state, sheepCentrolControlAction : interpolateStateInMCTS(state, np.concatenate([sheepCentrolControlAction] +  
+            [sampleFromDistribution(wolfLevel2PolicyGivenIntention(state))] * numWolves))
         
         # initialize children; expand
         initializeChildrenWolf = InitializeChildren(
@@ -267,7 +267,7 @@ def main():
         getSheepPos = GetAgentPosFromState(sheepId, posIndexInState)
         getWolvesPoses = [GetAgentPosFromState(wolfId, posIndexInState) for wolfId in range(1, numWolves + 1)]
 
-        minDistance = 400
+        minDistance = 350
         rolloutHeuristicWeightWolf = 0
         rolloutHeuristicsWolf = [reward.HeuristicDistanceToTarget(rolloutHeuristicWeightWolf, getWolfPos, getSheepPos, minDistance)
             for getWolfPos in getWolvesPoses]
@@ -305,9 +305,9 @@ def main():
         maxRolloutSteps = 5
         rolloutSheep = RollOut(rolloutPolicySheep, maxRolloutSteps, transitInMCTSSheep, rewardFunctionSheep, isTerminalInMCTS, rolloutHeuristicSheep)
 
-        numSimulationsWolf = 100
+        numSimulationsWolf = 150
         wolfLevel2GuidedMCTSPolicyGivenIntention = MCTS(numSimulationsWolf, selectChild, expandWolf, rolloutWolf, backup, establishPlainActionDist)
-        numSimulationsSheep = 10
+        numSimulationsSheep = 20
         sheepCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsSheep, selectChild, expandSheep, rolloutSheep, backup, establishPlainActionDist)
 
 	#final individual polices
@@ -347,7 +347,7 @@ def main():
             import pygame as pg
             from pygame.color import THECOLORS
             screenColor = THECOLORS['black']
-            circleColorList = [THECOLORS['green'], THECOLORS['green'], THECOLORS['yellow'], THECOLORS['red']]
+            circleColorList = [THECOLORS['green']] * numSheep + [THECOLORS['red']] * numWolves
             circleSize = 10
 
             saveImage = False
