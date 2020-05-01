@@ -30,11 +30,11 @@ if __name__ == '__main__':
 
     NNNumSimulations = 200  # 300 with distance Herustic; 200 without distanceHerustic
     diff = []
-    for maxStep in range(40, 51):
+    for maxStep in range(45, 51):
         result = []
-        for numOneWolfActionSpace in [9]:
-            numWolves = 2
-            maxRunningSteps = 101
+        for numOneWolfActionSpace in [5]:
+            numWolves = 3
+            maxRunningSteps = 100
             softParameterInPlanning = 2.5
             sheepPolicyName = 'maxNNPolicy'
             wolfPolicyName = 'maxNNPolicy'
@@ -47,7 +47,7 @@ if __name__ == '__main__':
             loadTrajectories = LoadTrajectories(generateTrajectorySavePath, loadFromPickle, fuzzySearchParameterNames)
             loadedTrajectories = loadTrajectories({'agentId': 1})
              
-            hierarchy = 0
+            hierarchy = 1
             trajectorySaveFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
                                          'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': hierarchy, 'numWolves': numWolves}
             generateTrajectorySavePathForResave = GetSavePath(saveTrajectoriesSaveDirectory, trajectorySaveExtension, trajectorySaveFixedParameters)

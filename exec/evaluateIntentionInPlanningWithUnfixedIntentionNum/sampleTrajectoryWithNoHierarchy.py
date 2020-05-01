@@ -68,14 +68,8 @@ class SampleTrjactoriesForConditions:
         imaginedWeIdCopys = [list(range(numSheep, numSheep + numWolves)) for _ in range(numWolves)]
         imaginedWeIdsForInferenceSubject = [sortSelfIdFirst(weIdCopy, selfId) 
             for weIdCopy, selfId in zip(imaginedWeIdCopys, list(range(numWolves)))]
-        
-        actionSpace = [(10, 0), (0, 10), (-10, 0), (0, -10), (0, 0)]
-        predatorPowerRatio = 8
-        wolfIndividualActionSpace = list(map(tuple, np.array(actionSpace) * predatorPowerRatio))
-        mappingActionToAnotherSpace = MappingActionToAnotherSpace(wolfIndividualActionSpace)
-        
-        perceptSelfAction = lambda singleAgentAction: mappingActionToAnotherSpace(singleAgentAction)
-        perceptOtherAction = lambda singleAgentAction: mappingActionToAnotherSpace(singleAgentAction)
+        perceptSelfAction = lambda singleAgentAction: singleAgentAction
+        perceptOtherAction = lambda singleAgentAction: singleAgentAction
         perceptImaginedWeAction = [PerceptImaginedWeAction(imaginedWeIds, perceptSelfAction, perceptOtherAction) 
                 for imaginedWeIds in imaginedWeIdsForInferenceSubject]
         perceptActionForAll = [lambda action: action] * numSheep + perceptImaginedWeAction
@@ -86,6 +80,10 @@ class SampleTrjactoriesForConditions:
         
         # Policy Likelihood function: Wolf Centrol Control NN Policy Given Intention
         numStateSpace = 2 * (numWolves + 1)
+        actionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
+                       (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
+        predatorPowerRatio = 8
+        wolfIndividualActionSpace = list(map(tuple, np.array(actionSpace) * predatorPowerRatio))
         wolfCentralControlActionSpace = list(it.product(wolfIndividualActionSpace, repeat = numWolves))
         numWolvesActionSpace = len(wolfCentralControlActionSpace)
         regularizationFactor = 1e-4
@@ -99,9 +97,9 @@ class SampleTrjactoriesForConditions:
         initializationMethod = 'uniform'
         initWolfCentralControlModel = generateWolfCentralControlModel(sharedWidths * wolfNNDepth, actionLayerWidths, valueLayerWidths, 
                 resBlockSize, initializationMethod, dropoutRate)
-        NNNumSimulations = 200
+        NNNumSimulations = 300
         wolfModelPath = os.path.join('..', '..', 'data', 'preTrainModel', 
-                'agentId='+str(5 * np.sum([10**_ for _ in
+                'agentId='+str(9 * np.sum([10**_ for _ in
                 range(numWolves)]))+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations='+str(NNNumSimulations)+'_trainSteps=50000')
         wolfCentralControlNNModel = restoreVariables(initWolfCentralControlModel, wolfModelPath)
         wolfCentralControlPolicyGivenIntention = ApproximatePolicy(wolfCentralControlNNModel, wolfCentralControlActionSpace)
@@ -150,7 +148,7 @@ class SampleTrjactoriesForConditions:
         sheepCentralControlActionSpace = list(it.product(sheepIndividualActionSpace))
         numSheepActionSpace = len(sheepCentralControlActionSpace)
         regularizationFactor = 1e-4
-        generateSheepModel = GenerateModel(numStateSpace, numSheepActionSpace, regularizationFactor)
+        generateSheepCentralControlModel = GenerateModel(numStateSpace, numSheepActionSpace, regularizationFactor)
         sharedWidths = [128]
         actionLayerWidths = [128]
         valueLayerWidths = [128]
@@ -158,46 +156,27 @@ class SampleTrjactoriesForConditions:
         resBlockSize = 2
         dropoutRate = 0.0
         initializationMethod = 'uniform'
-        initSheepModel = generateSheepModel(sharedWidths * sheepNNDepth, actionLayerWidths, valueLayerWidths, 
+        initSheepCentralControlModel = generateSheepCentralControlModel(sharedWidths * sheepNNDepth, actionLayerWidths, valueLayerWidths, 
                 resBlockSize, initializationMethod, dropoutRate)
         sheepModelPath = os.path.join('..', '..', 'data', 'preTrainModel',
                 'agentId=0.'+str(numWolves)+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=100_trainSteps=50000')
-        sheepNNModel = restoreVariables(initSheepModel, sheepModelPath)
-        sheepPolicyGivenIntention = ApproximatePolicy(sheepNNModel, sheepCentralControlActionSpace)
+        sheepCentralControlNNModel = restoreVariables(initSheepCentralControlModel, sheepModelPath)
+        sheepCentralControlPolicyGivenIntention = ApproximatePolicy(sheepCentralControlNNModel, sheepCentralControlActionSpace)
 
-        wolfLevel2ActionSpace = [(10, 0), (7, 7), (0, 10), (-7, 7),
-                       (-10, 0), (-7, -7), (0, -10), (7, -7), (0, 0)]
-        wolfLevel2IndividualActionSpace = list(map(tuple, np.array(wolfLevel2ActionSpace) * predatorPowerRatio))
-        wolfLevel2CentralControlActionSpace = list(it.product(wolfLevel2IndividualActionSpace))
-        numWolfLevel2ActionSpace = len(wolfLevel2CentralControlActionSpace)
-        regularizationFactor = 1e-4
-        generatewolfLevel2Model = GenerateModel(numStateSpace, numWolfLevel2ActionSpace, regularizationFactor)
-        sharedWidths = [128]
-        actionLayerWidths = [128]
-        valueLayerWidths = [128]
-        wolfLevel2NNDepth = 9
-        resBlockSize = 2
-        dropoutRate = 0.0
-        initializationMethod = 'uniform'
-        initwolfLevel2Model = generatewolfLevel2Model(sharedWidths * wolfLevel2NNDepth, actionLayerWidths, valueLayerWidths, 
-                resBlockSize, initializationMethod, dropoutRate)
-        wolfLevel2ModelPath = os.path.join('..', '..', 'data', 'preTrainModel',
-                'agentId=1.'+str(numWolves)+'_depth=9_hierarchy=2_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations='+str(NNNumSimulations)+'_trainSteps=50000')
-        wolfLevel2NNModel = restoreVariables(initwolfLevel2Model, wolfLevel2ModelPath)
-        wolfLevel2PolicyGivenIntention = ApproximatePolicy(wolfLevel2NNModel, wolfLevel2CentralControlActionSpace)
-        
         softParameterInPlanning = 2.5
         softPolicyInPlanning = SoftPolicy(softParameterInPlanning)
-        softenSheepPolicyGivenIntentionInPlanning = lambda state: softPolicyInPlanning(sheepPolicyGivenIntention(state))
-        softenWolfLevel2PolicyGivenIntentionInPlanning = lambda state: softPolicyInPlanning(wolfLevel2PolicyGivenIntention(state))
-        policiesGivenIntentions = [softenSheepPolicyGivenIntentionInPlanning] * numSheep + [softenWolfLevel2PolicyGivenIntentionInPlanning] * numWolves
-        planningIntervals = [1] * numSheep + [1] * numWolves
+        softSheepParameterInPlanning = 2.5
+        softSheepPolicyInPlanning = SoftPolicy(softSheepParameterInPlanning)
+        softenSheepCentralControlPolicyGivenIntentionInPlanning = lambda state: softSheepPolicyInPlanning(sheepCentralControlPolicyGivenIntention(state))
+        softenWolfCentralControlPolicyGivenIntentionInPlanning = lambda state: softPolicyInPlanning(wolfCentralControlPolicyGivenIntention(state))
+        centralControlPoliciesGivenIntentions = [softenSheepCentralControlPolicyGivenIntentionInPlanning] * numSheep + [softenWolfCentralControlPolicyGivenIntentionInPlanning] * numWolves
+        planningIntervals = [1] * numSheep +  [1] * numWolves
         intentionInferInterval = 1
         individualPolicies = [PolicyOnChangableIntention(perceptAction, 
             imaginedWeIntentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention, planningInterval, intentionInferInterval) 
-                for perceptAction, imaginedWeIntentionPrior, getStateForPolicyGivenIntention, updateIntentionDistribution, policyGivenIntention, planningInterval
+                for perceptAction, imaginedWeIntentionPrior, getStateForPolicyGivenIntention, updateIntentionDistribution, policyGivenIntention, planningInterval 
                 in zip(perceptActionForAll, imaginedWeIntentionPriors, getStateForPolicyGivenIntentions, 
-                    updateIntention, policiesGivenIntentions, planningIntervals)]
+                    updateIntention, centralControlPoliciesGivenIntentions, planningIntervals)]
 
         individualIdsForAllAgents = list(range(numWolves + numSheep))
         actionChoiceMethods = {'sampleNNPolicy': sampleFromDistribution, 'maxNNPolicy': maxFromDistribution}
@@ -208,7 +187,7 @@ class SampleTrjactoriesForConditions:
                 zip(imaginedWeIdsForAllAgents, individualIdsForAllAgents)]
         individualActionMethods = [lambda centrolActionDist: assign(chooseAction(centrolActionDist)) for assign, chooseAction in
                 zip(assignIndividualAction, chooseCentrolAction)]
-        
+
         policiesResetAttributes = ['timeStep', 'lastState', 'lastAction', 'intentionPrior', 'formerIntentionPriors']
         policiesResetAttributeValues = [dict(zip(policiesResetAttributes, [0, None, None, intentionPrior, [intentionPrior]])) for intentionPrior in
                 imaginedWeIntentionPriors]
@@ -218,7 +197,7 @@ class SampleTrjactoriesForConditions:
         recordActionForPolicy = RecordValuesForPolicyAttributes(attributesToRecord, individualPolicies) 
         
         # Sample and Save Trajectory
-        maxRunningSteps = 52
+        maxRunningSteps = 100 
         transitInPlay = InterpolateState(3, transit, isTerminal)
         sampleTrajectory = SampleTrajectory(maxRunningSteps, transitInPlay, isTerminal,
                 reset, individualActionMethods, resetPolicy,
@@ -227,14 +206,14 @@ class SampleTrjactoriesForConditions:
         trajectories = [sampleTrajectory(policy) for trjaectoryIndex in range(self.numTrajectories)]       
         
         trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
-                'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': 2, 'NNNumSimulations':NNNumSimulations}
+                'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': 0, 'NNNumSimulations':NNNumSimulations}
         self.saveTrajectoryByParameters(trajectories, trajectoryFixedParameters, parameters)
         print(np.mean([len(tra) for tra in trajectories]))
 
 def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
-    manipulatedVariables['numWolves'] = [3]
+    manipulatedVariables['numWolves'] = [2]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
     modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)
@@ -253,7 +232,7 @@ def main():
     getTrajectorySavePath = lambda trajectoryFixedParameters: GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
     saveTrajectoryByParameters = lambda trajectories, trajectoryFixedParameters, parameters: saveToPickle(trajectories, getTrajectorySavePath(trajectoryFixedParameters)(parameters))
    
-    numTrajectories = 200
+    numTrajectories = 500
     sampleTrajectoriesForConditions = SampleTrjactoriesForConditions(numTrajectories, saveTrajectoryByParameters)
     [sampleTrajectoriesForConditions(para) for para in parametersAllCondtion]
     # Compute Statistics on the Trajectories

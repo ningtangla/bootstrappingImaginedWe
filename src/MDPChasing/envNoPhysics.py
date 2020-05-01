@@ -35,10 +35,10 @@ class TransitForNoPhysics():
 
     def __call__(self, state, action):
         newState = np.array(state) + np.array(action)
-        checkedNewStateAndVelocities = [self.stayInBoundaryByReflectVelocity(
+        checkedNewPositionsAndVelocities = [self.stayInBoundaryByReflectVelocity(
             position, velocity) for position, velocity in zip(newState, action)]
-        newState, newAction = list(zip(*checkedNewStateAndVelocities))
-        return np.array(newState)
+        newState, newAction = list(zip(*checkedNewPositionsAndVelocities))
+        return np.array(newState), np.array(newAction)
 
 class TransitGivenOtherPolicy():
     def __init__(self, selfId, transition, otherPolicy, chooseAction, centralControlFlag = False):
@@ -57,9 +57,9 @@ class TransitGivenOtherPolicy():
             individualActions = np.concatenate(action)
         individualActions[self.selfId] = individualAction
         newState = self.transition(state, individualActions)
-        return newState
+        return np.array(newState)
 
-class InterpolateState:
+class TransitWithInterpolateState:
     def __init__(self, numFramesToInterpolate, transite, isTerminal):
         self.numFramesToInterpolate = numFramesToInterpolate
         self.transite = transite
@@ -68,11 +68,12 @@ class InterpolateState:
     def __call__(self, state, action):
         actionForInterpolation = np.array(action) / (self.numFramesToInterpolate + 1)
         for frameIndex in range(self.numFramesToInterpolate + 1):
-            nextState = self.transite(state, actionForInterpolation)
+            nextState, nextActionForInterpolation = self.transite(state, actionForInterpolation)
             if self.isTerminal(nextState):
                 break
             state = nextState
-        return nextState
+            actionForInterpolation = nextActionForInterpolation
+        return np.array(nextState)
 
 class IsTerminal():
     def __init__(self, minDistance, getPreyPos, getPredatorPos):

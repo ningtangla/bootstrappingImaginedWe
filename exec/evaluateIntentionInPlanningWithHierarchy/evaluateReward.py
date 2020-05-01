@@ -32,8 +32,8 @@ from src.evaluation import ComputeStatistics
 def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
-    manipulatedVariables['numWolves'] = [2]
-    manipulatedVariables['hierarchy'] = [0, 1, 2]
+    manipulatedVariables['numWolves'] = [3]
+    manipulatedVariables['hierarchy'] = [1, 2]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
     modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)
@@ -49,7 +49,7 @@ def main():
         os.makedirs(trajectoryDirectory)
    
     NNNumSimulations = 200
-    maxRunningSteps = 100
+    maxRunningSteps = 52
     softParameterInPlanning = 2.5
     sheepPolicyName = 'sampleNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
@@ -62,7 +62,7 @@ def main():
     loadTrajectories = LoadTrajectories(getTrajectorySavePath, loadFromPickle)
     loadTrajectoriesFromDf = lambda df: loadTrajectories(readParametersFromDf(df))
     
-    maxSteps = 50
+    maxSteps = 35
     measureIntentionArcheivement = lambda df: lambda trajectory: int(len(trajectory) < maxSteps) - 1 / maxSteps * min(len(trajectory), maxSteps)
     computeStatistics = ComputeStatistics(loadTrajectoriesFromDf, measureIntentionArcheivement)
     statisticsDf = toSplitFrame.groupby(levelNames).apply(computeStatistics)
@@ -81,8 +81,8 @@ def main():
         
         group.index = group.index.droplevel('numWolves')
         group.index.name = 'Hierarchy'
-        group.index = ['9*9', '5*5', '5*5 + 9']
-        group.plot.line(ax = axForDraw, y = 'mean', yerr = 'se', label = '', xlim = (-0.1, 2.1), ylim = (0, 0.75), marker = 'o', rot = 0 )
+        group.index = ['5*5', '5*5 + 9']
+        group.plot.line(ax = axForDraw, y = 'mean', yerr = 'se', label = '', xlim = (-0.1, 1.1), ylim = (0, 0.75), marker = 'o', rot = 0 )
         plotCounter = plotCounter + 1
 
     #plt.suptitle('Wolves Accumulated Reward')

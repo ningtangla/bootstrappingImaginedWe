@@ -20,7 +20,7 @@ import math
 from src.algorithms.mcts import ScoreChild, SelectChild, InitializeChildren, MCTS, backup, establishPlainActionDist, Expand, RollOut, establishSoftmaxActionDist
 from src.MDPChasing.state import GetAgentPosFromState, GetStateForPolicyGivenIntention
 from src.MDPChasing.policies import RandomPolicy, PolicyOnChangableIntention, SoftPolicy, RecordValuesForPolicyAttributes, ResetPolicy
-from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal, InterpolateState
+from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal, TransitWithInterpolateState
 from src.centralControl import AssignCentralControlToIndividual
 from src.trajectory import SampleTrajectory, SampleTrajectoryWithRender, Render
 from src.chooseFromDistribution import sampleFromDistribution, maxFromDistribution
@@ -64,7 +64,7 @@ def main():
     numOneWolfActionSpace = 5
     NNNumSimulations = 200 #300 with distance Herustic; 200 without distanceHerustic
     numWolves = 3
-    maxRunningSteps = 100
+    maxRunningSteps = 101
     softParameterInPlanning = 2.5
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'maxNNPolicy'
@@ -220,7 +220,7 @@ def main():
         getPredatorPosInMCTS = GetAgentPosFromState(possiblePredatorIdsInMCTS, posIndexInState)
         isTerminalInMCTS = IsTerminal(killzoneRadius, getPreyPosInMCTS, getPredatorPosInMCTS)
         numFrameToInterpolate = 3
-        interpolateStateInMCTS = InterpolateState(3, transit, isTerminalInMCTS)
+        interpolateStateInMCTS = TransitWithInterpolateState(numFrameToInterpolate, transit, isTerminalInMCTS)
         transitInMCTSWolf = lambda state, wolfCentrolControlAction : interpolateStateInMCTS(state, np.concatenate([sampleFromDistribution(sheepCentralControlPolicyGivenIntention(state)),
             wolfCentrolControlAction]))
         transitInMCTSSheep = lambda state, sheepCentrolControlAction : interpolateStateInMCTS(state, np.concatenate([sheepCentrolControlAction,
@@ -274,9 +274,9 @@ def main():
         maxRolloutSteps = 5
         rolloutSheep = RollOut(rolloutPolicySheep, maxRolloutSteps, transitInMCTSSheep, rewardFunctionSheep, isTerminalInMCTS, rolloutHeuristicSheep)
 
-        numSimulationsWolf = 150
+        numSimulationsWolf = 100
         wolfCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsWolf, selectChild, expandWolf, rolloutWolf, backup, establishPlainActionDist)
-        numSimulationsSheep = 20
+        numSimulationsSheep = 50
         sheepCentralControlGuidedMCTSPolicyGivenIntention = MCTS(numSimulationsSheep, selectChild, expandSheep, rolloutSheep, backup, establishPlainActionDist)
 
 	#final individual polices
@@ -327,7 +327,7 @@ def main():
             screen = pg.display.set_mode([xBoundary[1], yBoundary[1]])
             render = Render(numOfAgent, posIndexInState, screen, screenColor, circleColorList, circleSize, saveImage, saveImageDir)
 
-        interpolateStateInPlay = InterpolateState(3, transit, isTerminalInPlay)
+        interpolateStateInPlay = TransitWithInterpolateState(numFrameToInterpolate, transit, isTerminalInPlay)
         transitInPlay = lambda state, action : interpolateStateInPlay(state, action)
         sampleTrajectory = SampleTrajectoryWithRender(maxRunningSteps, transitInPlay, isTerminalInPlay,
                 reset, individualActionMethods, resetPolicy,

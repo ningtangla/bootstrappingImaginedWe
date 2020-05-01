@@ -96,7 +96,7 @@ class SampleTrjactoriesForConditions:
         initializationMethod = 'uniform'
         initWolfCentralControlModel = generateWolfCentralControlModel(sharedWidths * wolfNNDepth, actionLayerWidths, valueLayerWidths, 
                 resBlockSize, initializationMethod, dropoutRate)
-        NNNumSimulations = 300
+        NNNumSimulations = 200
         wolfModelPath = os.path.join('..', '..', 'data', 'preTrainModel', 
                 'agentId='+str(5 * np.sum([10**_ for _ in
                 range(numWolves)]))+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations='+str(NNNumSimulations)+'_trainSteps=50000')
@@ -196,7 +196,7 @@ class SampleTrjactoriesForConditions:
         recordActionForPolicy = RecordValuesForPolicyAttributes(attributesToRecord, individualPolicies) 
         
         # Sample and Save Trajectory
-        maxRunningSteps = 100
+        maxRunningSteps = 52
         transitInPlay = InterpolateState(3, transit, isTerminal)
         sampleTrajectory = SampleTrajectory(maxRunningSteps, transitInPlay, isTerminal,
                 reset, individualActionMethods, resetPolicy,
@@ -212,7 +212,7 @@ class SampleTrjactoriesForConditions:
 def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
-    manipulatedVariables['numWolves'] = [2]
+    manipulatedVariables['numWolves'] = [3]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
     modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)
@@ -231,7 +231,7 @@ def main():
     getTrajectorySavePath = lambda trajectoryFixedParameters: GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
     saveTrajectoryByParameters = lambda trajectories, trajectoryFixedParameters, parameters: saveToPickle(trajectories, getTrajectorySavePath(trajectoryFixedParameters)(parameters))
    
-    numTrajectories = 500
+    numTrajectories = 200
     sampleTrajectoriesForConditions = SampleTrjactoriesForConditions(numTrajectories, saveTrajectoryByParameters)
     [sampleTrajectoriesForConditions(para) for para in parametersAllCondtion]
     # Compute Statistics on the Trajectories
