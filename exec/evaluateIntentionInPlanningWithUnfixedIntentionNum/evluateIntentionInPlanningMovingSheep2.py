@@ -25,7 +25,7 @@ from src.trajectoriesSaveLoad import GetSavePath, readParametersFromDf, LoadTraj
     GenerateAllSampleIndexSavePaths, saveToPickle, loadFromPickle
 from src.neuralNetwork.policyValueResNet import GenerateModel, ApproximatePolicy, restoreVariables
 from src.inference.percept import SampleNoisyAction, MappingActionToAnotherSpace, PerceptImaginedWeAction
-from src.inference.inference import CalPolicyLikelihood, InferOneStep, InferOnTrajectory
+from src.inference.inference2 import CalPolicyLikelihood, InferOneStep, InferOnTrajectory
 from src.evaluation import ComputeStatistics
 
 def sortSelfIdFirst(weId, selfId):
@@ -63,7 +63,7 @@ class SampleTrjactoriesForConditions:
         sheepImagindWeIntentionPrior = {tuple(range(numSheep, numSheep + numWolves)): 1}
         wolfImaginedWeIntentionPrior = {(sheepId, ): 1/numSheep for sheepId in range(numSheep)}
         imaginedWeIntentionPriors = [sheepImagindWeIntentionPrior] * numSheep + [wolfImaginedWeIntentionPrior] * numWolves
-        
+ 
         # Percept Action
         imaginedWeIdCopys = [list(range(numSheep, numSheep + numWolves)) for _ in range(numWolves)]
         imaginedWeIdsForInferenceSubject = [sortSelfIdFirst(weIdCopy, selfId) 
@@ -73,7 +73,6 @@ class SampleTrjactoriesForConditions:
         perceptImaginedWeAction = [PerceptImaginedWeAction(imaginedWeIds, perceptSelfAction, perceptOtherAction) 
                 for imaginedWeIds in imaginedWeIdsForInferenceSubject]
         perceptActionForAll = [lambda action: action] * numSheep + perceptImaginedWeAction
-         
         # Inference of Imagined We
         noInferIntention = lambda intentionPrior, action, perceivedAction: intentionPrior
         sheepUpdateIntentionMethod = noInferIntention
@@ -118,17 +117,16 @@ class SampleTrjactoriesForConditions:
         calActionPerceptionLikelihood = lambda action, perceivedAction: int(np.allclose(np.array(action), np.array(perceivedAction)))
 
         # Joint Likelihood
-        composeCalJointLikelihood = lambda calPolicyLikelihood, calActionPerceptionLikelihood: lambda intention, state, action, perceivedAction: \
-            calPolicyLikelihood(intention, state, action) * calActionPerceptionLikelihood(action, perceivedAction)
-        calJointLikelihoods = [composeCalJointLikelihood(calPolicyLikelihood, calActionPerceptionLikelihood) 
+        composeCalJointLikelihood = lambda calPolicyLikelihood : lambda intention, state, perceivedAction: \
+            calPolicyLikelihood(intention, state, perceivedAction) 
+        calJointLikelihoods = [composeCalJointLikelihood(calPolicyLikelihood) 
             for calPolicyLikelihood in calPoliciesLikelihood]
 
         # Joint Hypothesis Space
         priorDecayRate = 1
         intentionSpace = [(id,) for id in range(numSheep)]
-        actionSpaceInInference = wolfCentralControlActionSpace
-        variables = [intentionSpace, actionSpaceInInference]
-        jointHypothesisSpace = pd.MultiIndex.from_product(variables, names=['intention', 'action'])
+        variables = [intentionSpace]
+        jointHypothesisSpace = pd.MultiIndex.from_product(variables, names=['intention'])
         concernedHypothesisVariable = ['intention']
         inferImaginedWe = [InferOneStep(priorDecayRate, jointHypothesisSpace,
                 concernedHypothesisVariable, calJointLikelihood) for calJointLikelihood in calJointLikelihoods]
@@ -214,8 +212,8 @@ class SampleTrjactoriesForConditions:
 def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
-    manipulatedVariables['numWolves'] = [2]
-    manipulatedVariables['numSheep'] = [2, 4, 8]
+    manipulatedVariables['numWolves'] = [3]
+    manipulatedVariables['numSheep'] = [8]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
     modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)

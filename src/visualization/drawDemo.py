@@ -92,9 +92,10 @@ class InterpolateState:
         actionForInterpolation = np.array(action) / (self.numFramesToInterpolate + 1)
         interpolatedStates = [state]
         for frameIndex in range(self.numFramesToInterpolate):
-            nextState = self.transite(state, actionForInterpolation)
+            nextState, nextActionForInterpolation = self.transite(state, actionForInterpolation)
             interpolatedStates.append(nextState)
             state = nextState
+            actionForInterpolation = nextActionForInterpolation
         return interpolatedStates
 
 class ChaseTrialWithTraj:

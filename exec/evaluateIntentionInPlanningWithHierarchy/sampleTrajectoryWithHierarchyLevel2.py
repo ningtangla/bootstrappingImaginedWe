@@ -17,7 +17,7 @@ import math
 
 from src.MDPChasing.state import GetAgentPosFromState, GetStateForPolicyGivenIntention
 from src.MDPChasing.policies import RandomPolicy, PolicyOnChangableIntention, SoftPolicy, RecordValuesForPolicyAttributes, ResetPolicy
-from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal, InterpolateState
+from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal, TransitWithInterpolateState
 from src.centralControl import AssignCentralControlToIndividual
 from src.trajectory import SampleTrajectory
 from src.chooseFromDistribution import sampleFromDistribution, maxFromDistribution
@@ -40,11 +40,11 @@ class SampleTrjactoriesForConditions:
     def __call__(self, parameters):
         print(parameters)
         numWolves = parameters['numWolves']
+        numSheep = parameters['numSheep']
         
         # MDP Env
         xBoundary = [0,600]
         yBoundary = [0,600]
-        numSheep = 2
         numOfAgent = numWolves + numSheep
         reset = Reset(xBoundary, yBoundary, numOfAgent)
         
@@ -120,17 +120,17 @@ class SampleTrjactoriesForConditions:
         calActionPerceptionLikelihood = lambda action, perceivedAction: int(np.allclose(np.array(action), np.array(perceivedAction)))
 
         # Joint Likelihood
-        composeCalJointLikelihood = lambda calPolicyLikelihood, calActionPerceptionLikelihood: lambda intention, state, action, perceivedAction: \
-            calPolicyLikelihood(intention, state, action) * calActionPerceptionLikelihood(action, perceivedAction)
-        calJointLikelihoods = [composeCalJointLikelihood(calPolicyLikelihood, calActionPerceptionLikelihood) 
+        composeCalJointLikelihood = lambda calPolicyLikelihood: lambda intention, state, perceivedAction: \
+            calPolicyLikelihood(intention, state, perceivedAction) 
+        calJointLikelihoods = [composeCalJointLikelihood(calPolicyLikelihood) 
             for calPolicyLikelihood in calPoliciesLikelihood]
 
         # Joint Hypothesis Space
         priorDecayRate = 1
         intentionSpace = [(id,) for id in range(numSheep)]
         actionSpaceInInference = wolfCentralControlActionSpace
-        variables = [intentionSpace, actionSpaceInInference]
-        jointHypothesisSpace = pd.MultiIndex.from_product(variables, names=['intention', 'action'])
+        variables = [intentionSpace]
+        jointHypothesisSpace = pd.MultiIndex.from_product(variables, names=['intention'])
         concernedHypothesisVariable = ['intention']
         inferImaginedWe = [InferOneStep(priorDecayRate, jointHypothesisSpace,
                 concernedHypothesisVariable, calJointLikelihood) for calJointLikelihood in calJointLikelihoods]
@@ -201,7 +201,7 @@ class SampleTrjactoriesForConditions:
 
         individualIdsForAllAgents = list(range(numWolves + numSheep))
         actionChoiceMethods = {'sampleNNPolicy': sampleFromDistribution, 'maxNNPolicy': maxFromDistribution}
-        sheepPolicyName = 'sampleNNPolicy'
+        sheepPolicyName = 'maxNNPolicy'
         wolfPolicyName = 'sampleNNPolicy'
         chooseCentrolAction = [actionChoiceMethods[sheepPolicyName]]* numSheep + [actionChoiceMethods[wolfPolicyName]]* numWolves
         assignIndividualAction = [AssignCentralControlToIndividual(imaginedWeId, individualId) for imaginedWeId, individualId in
@@ -218,8 +218,9 @@ class SampleTrjactoriesForConditions:
         recordActionForPolicy = RecordValuesForPolicyAttributes(attributesToRecord, individualPolicies) 
         
         # Sample and Save Trajectory
-        maxRunningSteps = 52
-        transitInPlay = InterpolateState(3, transit, isTerminal)
+        maxRunningSteps = 50
+        numFrameToInterpolateState = 3
+        transitInPlay = TransitWithInterpolateState(numFrameToInterpolateState, transit, isTerminal)
         sampleTrajectory = SampleTrajectory(maxRunningSteps, transitInPlay, isTerminal,
                 reset, individualActionMethods, resetPolicy,
                 recordActionForPolicy)
@@ -235,6 +236,7 @@ def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
     manipulatedVariables['numWolves'] = [3]
+    manipulatedVariables['numSheep'] = [2, 4, 8]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
     modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)

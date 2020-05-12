@@ -29,30 +29,7 @@ class InferOneStep:
         marginalLikelihood = jointHypothesisDf.groupby(self.concernedHypothesisVariable).sum()
         oneStepLikelihood = marginalLikelihood['likelihood'].to_dict()
         decayedLogPrior = {key: np.log(value) * self.priorDecayRate for key, value in intentionPrior.items()}
-        unnomalizedPosterior = {key: np.exp(decayedLogPrior[key] + np.log(oneStepLikelihood[key] + 1e-3)) for key in list(intentionPrior.keys())}
-        normalizedProbabilities = np.array(list(unnomalizedPosterior.values())) / np.sum(list(unnomalizedPosterior.values()))
-        normalizedPosterior = dict(zip(list(unnomalizedPosterior.keys()),normalizedProbabilities))
-        return normalizedPosterior
-
-
-class InferOneStepWithActionNoise:
-    def __init__(self, priorDecayRate, jointHypothesisSpace, concernedHypothesisVariable, calJointLikelihood, perceptNextState = None):	
-        self.priorDecayRate = priorDecayRate
-        self.jointHypothesisSpace = jointHypothesisSpace
-        self.concernedHypothesisVariable = concernedHypothesisVariable	
-        self.calJointLikelihood = calJointLikelihood
-
-    def __call__(self, intentionPrior, state, perceivedAction):
-        jointHypothesisDf = pd.DataFrame(index = self.jointHypothesisSpace)
-        intentions = jointHypothesisDf.index.get_level_values('intention')
-        actions = jointHypothesisDf.index.get_level_values('action')
-        jointHypothesisDf['likelihood'] = [self.calJointLikelihood(intention, state, action, perceivedAction) for intention, action in zip(intentions, actions)]
-        #__import__('ipdb').set_trace()
-        #jointHypothesisDf['jointLikelihood'] = jointHypothesisDf.apply(lambda row: self.calJointLikelihood(row.name[0], state, row.name[1], nextState))
-        marginalLikelihood = jointHypothesisDf.groupby(self.concernedHypothesisVariable).sum()
-        oneStepLikelihood = marginalLikelihood['likelihood'].to_dict()
-        decayedLogPrior = {key: np.log(value) * self.priorDecayRate for key, value in intentionPrior.items()}
-        unnomalizedPosterior = {key: np.exp(decayedLogPrior[key] + np.log(oneStepLikelihood[key] + 1e-3)) for key in list(intentionPrior.keys())}
+        unnomalizedPosterior = {key: np.exp(decayedLogPrior[key] + np.log(oneStepLikelihood[key] + 0.001)) for key in list(intentionPrior.keys())}
         normalizedProbabilities = np.array(list(unnomalizedPosterior.values())) / np.sum(list(unnomalizedPosterior.values()))
         normalizedPosterior = dict(zip(list(unnomalizedPosterior.keys()),normalizedProbabilities))
         return normalizedPosterior

@@ -32,8 +32,9 @@ from src.evaluation import ComputeStatistics
 def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
-    manipulatedVariables['numWolves'] = [3]
-    manipulatedVariables['hierarchy'] = [1, 2]
+    #manipulatedVariables['numWolves'] = [3]
+    manipulatedVariables['hierarchy'] = [0, 2]
+    manipulatedVariables['numSheep'] = [2, 4, 8]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
     modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)
@@ -43,18 +44,18 @@ def main():
 
 
     DIRNAME = os.path.dirname(__file__)
-    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchyGuidedMCTSBothWolfSheep',
+    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithNumIntentions',
                                     'trajectories')
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)
    
     NNNumSimulations = 200
-    maxRunningSteps = 101
+    maxRunningSteps = 50
     softParameterInPlanning = 2.5
     sheepPolicyName = 'maxNNPolicy'
-    wolfPolicyName = 'maxNNPolicy'
-    trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
-            'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'NNNumSimulations': NNNumSimulations}
+    wolfPolicyName = 'sampleNNPolicy'
+    trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'numWolves': 3,
+            'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'NNNumSimulations': NNNumSimulations}#, 'hierarchy': 2}
     trajectoryExtension = '.pickle'
     getTrajectorySavePath = GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
     
@@ -69,20 +70,21 @@ def main():
     print(statisticsDf) 
     
     fig = plt.figure()
-    numColumns = 1#len(manipulatedVariables['numActionSpaceForOthers'])
-    numRows = len(manipulatedVariables['numWolves'])
+    numColumns = 1
+    numRows = 1#len(manipulatedVariables['numWolves'])
     plotCounter = 1
 
-    for numWolves, group in statisticsDf.groupby('numWolves'):
+    axForDraw = fig.add_subplot(numRows, numColumns, plotCounter)
+    #for numWolves, group in statisticsDf.groupby('numWolves'):
+    for hierarchy, group in statisticsDf.groupby('hierarchy'):
+        #group.index = group.index.droplevel('numWolves')
+        group.index = group.index.droplevel('hierarchy')
         
-        axForDraw = fig.add_subplot(numRows, numColumns, plotCounter)
         axForDraw.set_ylabel('Accumulated Reward')
         #axForDraw.set_ylabel(str(numWolves))
         
-        group.index = group.index.droplevel('numWolves')
-        group.index.name = 'Hierarchy'
-        group.index = ['5*5', '5*5 + 9']
-        group.plot.line(ax = axForDraw, y = 'mean', yerr = 'se', label = '', ylim = (0.1, 0.75), marker = 'o', rot = 0 )
+        group.index.name = 'numSheep'
+        group.plot.line(ax = axForDraw, y = 'mean', yerr = 'se', label = str(hierarchy), ylim = (0, 0.85), marker = 'o', rot = 0 )
         plotCounter = plotCounter + 1
 
     #plt.suptitle('Wolves Accumulated Reward')

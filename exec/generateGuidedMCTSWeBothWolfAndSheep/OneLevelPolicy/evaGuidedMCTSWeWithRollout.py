@@ -14,14 +14,14 @@ from matplotlib import pyplot as plt
 from src.trajectoriesSaveLoad import GetSavePath, readParametersFromDf, LoadTrajectories, SaveAllTrajectories, \
     GenerateAllSampleIndexSavePaths, saveToPickle, loadFromPickle
 from src.MDPChasing.state import GetAgentPosFromState, GetStateForPolicyGivenIntention
-from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal, InterpolateState
+from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal, TransitWithInterpolateState
 from src.preProcessing import AccumulateRewards, AddValuesToTrajectory, RemoveTerminalTupleFromTrajectory, ActionToOneHot, ProcessTrajectoryForPolicyValueNet, PreProcessTrajectories
 from src.MDPChasing.reward import RewardFunctionCompete
 
 if __name__ == '__main__':
     dirName = os.path.dirname(__file__)
-    trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRolloutBothWolfSheep', 'OneLeveLPolicy', 'trajectories')
-    #trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRolloutBothWolfSheep', 'HierarchyPolicy', 'trajectories')
+    #trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRolloutBothWolfSheep', 'OneLeveLPolicy', 'trajectories')
+    trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRolloutBothWolfSheep', 'HierarchyPolicy', 'trajectories')
     trajectorySaveExtension = '.pickle'
     saveTrajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchyGuidedMCTSBothWolfSheep', 'trajectories')
 
@@ -30,11 +30,11 @@ if __name__ == '__main__':
 
     NNNumSimulations = 200  # 300 with distance Herustic; 200 without distanceHerustic
     diff = []
-    for maxStep in range(45, 51):
+    for maxStep in range(30, 51):
         result = []
         for numOneWolfActionSpace in [5]:
             numWolves = 3
-            maxRunningSteps = 100
+            maxRunningSteps = 101
             softParameterInPlanning = 2.5
             sheepPolicyName = 'maxNNPolicy'
             wolfPolicyName = 'maxNNPolicy'
@@ -47,7 +47,7 @@ if __name__ == '__main__':
             loadTrajectories = LoadTrajectories(generateTrajectorySavePath, loadFromPickle, fuzzySearchParameterNames)
             loadedTrajectories = loadTrajectories({'agentId': 1})
              
-            hierarchy = 1
+            hierarchy = 2
             trajectorySaveFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
                                          'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': hierarchy, 'numWolves': numWolves}
             generateTrajectorySavePathForResave = GetSavePath(saveTrajectoriesSaveDirectory, trajectorySaveExtension, trajectorySaveFixedParameters)

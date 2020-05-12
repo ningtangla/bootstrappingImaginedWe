@@ -26,18 +26,18 @@ from scipy.interpolate import interp1d
 
 class MeasureCrossEntropy:
     def __init__(self, imaginedWeIds, priorIndex):
-        self.baseId, self.nonBaseId = imaginedWeIds
+        self.baseId, self.nonBaseIds = imaginedWeIds
         self.priorIndex = priorIndex
 
     def __call__(self, trajectory):
-
         priors = [timeStep[self.priorIndex] for timeStep in trajectory]
         baseDistributions = [list(prior[self.baseId].values())
                 for prior in priors] 
-        nonBaseDistributions = [list(prior[self.nonBaseId].values())
-                for prior in priors] 
-        crossEntropies = [stats.entropy(baseDistribution) + stats.entropy(baseDistribution, nonBaseDistribution) 
-                for baseDistribution, nonBaseDistribution in zip(baseDistributions, nonBaseDistributions)]
+        nonBaseDistributionsAllNonBaseAgents = [[list(prior[nonBaseId].values()) 
+            for nonBaseId in self.nonBaseIds] for prior in priors]
+        crossEntropies = [stats.entropy(baseDistribution) + np.mean([stats.entropy(baseDistribution, nonBaseDistribution) 
+            for nonBaseDistribution in nonBaseDistributions]) 
+            for baseDistribution, nonBaseDistributions in zip(baseDistributions, nonBaseDistributionsAllNonBaseAgents)]
         return crossEntropies
 
 class Interpolate1dData:
@@ -54,8 +54,8 @@ class Interpolate1dData:
 def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
-    manipulatedVariables['numIntentions'] = [2, 4, 8]
-    manipulatedVariables['maxRunningSteps'] = [100]
+    manipulatedVariables['numSheep'] = [2, 4, 8]
+    manipulatedVariables['numWolves'] = [3]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
     modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)
@@ -70,11 +70,13 @@ def main():
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)
 
-    softParameterInPlanning = 2.5 
+    maxRunningSteps = 50
+    softParameterInPlanning = 2.5
+    NNNumSimulations = 200
     sheepPolicyName = 'sampleNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
-    trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
-            'policySoftParameter': softParameterInPlanning}
+    trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
+            'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': 2}
     trajectoryExtension = '.pickle'
     getTrajectorySavePath = GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
     
@@ -84,25 +86,28 @@ def main():
     loadTrajectoriesFromDf = lambda df: loadTrajectories(readParametersFromDf(df)) 
 
     priorIndexinTimestep = 3
-    composeMeasureCrossEntropy = lambda df: MeasureCrossEntropy([readParametersFromDf(df)['numIntentions'], readParametersFromDf(df)['numIntentions'] + 1], priorIndexinTimestep)
-    composeInterpolateFunction = lambda df: Interpolate1dData(readParametersFromDf(df)['maxRunningSteps'])
+    getImaginedWeIdsForCrossEntropy = lambda df: [readParametersFromDf(df)['numSheep'], list(range(readParametersFromDf(df)['numSheep'] + 1, readParametersFromDf(df)['numSheep'] +
+        readParametersFromDf(df)['numWolves']))] 
+    composeMeasureCrossEntropy = lambda df: MeasureCrossEntropy(getImaginedWeIdsForCrossEntropy(df), priorIndexinTimestep)
+    composeInterpolateFunction = lambda df: Interpolate1dData(maxRunningSteps)
     measureFunction = lambda df: lambda trajectory: composeInterpolateFunction(df)(composeMeasureCrossEntropy(df)(trajectory))
     computeStatistics = ComputeStatistics(loadTrajectoriesFromDf, measureFunction)
     statisticsDf = toSplitFrame.groupby(levelNames).apply(computeStatistics)
     
     fig = plt.figure()
-    #numColumns = len(manipulatedVariables['numIntentions'])
-    numColumns = 1
-    numRows = len(manipulatedVariables['maxRunningSteps'])
+    numColumns = len(manipulatedVariables['numWolves'])
+    #numColumns = 1
+    numRows = 1
     plotCounter = 1
-    for maxRunningSteps, group in statisticsDf.groupby('maxRunningSteps'):
-        group.index = group.index.droplevel('maxRunningSteps')
+    for numWolves, group in statisticsDf.groupby('numWolves'):
+        group.index = group.index.droplevel('numWolves')
         axForDraw = fig.add_subplot(numRows, numColumns, plotCounter)
         #if plotCounter % numColumns == 1:
         axForDraw.set_ylabel('Cross Entropy')
-        for numIntentions, grp in group.groupby('numIntentions'):
+        for numSheep, grp in group.groupby('numSheep'):
             df = pd.DataFrame(grp.values[0].tolist(), columns = list(range(maxRunningSteps)), index = ['mean','se']).T
-            df.plot.line(ax = axForDraw, label = 'Set Size of Intentions = {}'.format(numIntentions), label = '', y = 'mean', yerr = 'se', ylim = (0, 2.5), rot = 0)
+            df.plot.line(ax = axForDraw, label = 'Set Size of Intentions = {}'.format(numSheep), y = 'mean', yerr = 'se', ylim = (0, 3), rot = 0)
+
         plotCounter = plotCounter + 1
 
     #plt.suptitle('Wolves Cross Entropy')
