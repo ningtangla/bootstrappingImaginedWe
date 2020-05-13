@@ -68,4 +68,3 @@ class HeuristicDistanceToTarget:
         reward = -self.weight * max(0, distance - self.minDistance)
 
         return reward
-

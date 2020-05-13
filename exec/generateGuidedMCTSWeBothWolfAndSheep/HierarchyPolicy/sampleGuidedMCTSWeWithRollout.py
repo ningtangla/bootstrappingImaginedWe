@@ -43,15 +43,15 @@ def main():
     renderOn = 0
     if DEBUG:
         parametersForTrajectoryPath = {}
-        startSampleIndex = 0
+        startSampleIndex = 5
         endSampleIndex = 7
-        agentId = 1
+        numSheep = 8
         parametersForTrajectoryPath['sampleIndex'] = (startSampleIndex, endSampleIndex)
     else:
         parametersForTrajectoryPath = json.loads(sys.argv[1])
         startSampleIndex = int(sys.argv[2])
         endSampleIndex = int(sys.argv[3])
-        agentId = int(parametersForTrajectoryPath['agentId'])
+        numSheep = int(parametersForTrajectoryPath['numSheep'])
         parametersForTrajectoryPath['sampleIndex'] = (startSampleIndex, endSampleIndex)
 
     # check file exists or not
@@ -69,7 +69,8 @@ def main():
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'maxNNPolicy'
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
-            'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'numOneWolfActionSpace': numOneWolfActionSpace, 'numWolves': numWolves}
+            'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'numOneWolfActionSpace': numOneWolfActionSpace, 
+            'numSheep': numSheep, 'numWolves': numWolves}
 
     generateTrajectorySavePath = GetSavePath(trajectoriesSaveDirectory, trajectorySaveExtension, trajectoryFixedParameters)
     trajectorySavePath = generateTrajectorySavePath(parametersForTrajectoryPath)
@@ -80,7 +81,6 @@ def main():
         # MDP Env
         xBoundary = [0,600]
         yBoundary = [0,600]
-        numSheep = 2
         numOfAgent = numWolves + numSheep
         reset = Reset(xBoundary, yBoundary, numOfAgent)
 
@@ -153,21 +153,17 @@ def main():
         calPoliciesLikelihood = [CalPolicyLikelihood(getState, softenWolfCentralControlPolicyGivenIntentionInInference)
                 for getState in getStateForPolicyGivenIntentionInInference]
 
-        # ActionPerception Likelihood
-        calActionPerceptionLikelihood = lambda action, perceivedAction: int(np.allclose(np.array(action), np.array(perceivedAction)))
-
         # Joint Likelihood
-        composeCalJointLikelihood = lambda calPolicyLikelihood, calActionPerceptionLikelihood: lambda intention, state, action, perceivedAction: \
-            calPolicyLikelihood(intention, state, action) * calActionPerceptionLikelihood(action, perceivedAction)
-        calJointLikelihoods = [composeCalJointLikelihood(calPolicyLikelihood, calActionPerceptionLikelihood)
+        composeCalJointLikelihood = lambda calPolicyLikelihood: lambda intention, state, perceivedAction: \
+            calPolicyLikelihood(intention, state, perceivedAction)
+        calJointLikelihoods = [composeCalJointLikelihood(calPolicyLikelihood)
             for calPolicyLikelihood in calPoliciesLikelihood]
 
         # Joint Hypothesis Space
         priorDecayRate = 1
         intentionSpace = [(id,) for id in range(numSheep)]
-        actionSpaceInInference = wolfCentralControlActionSpace
-        variables = [intentionSpace, actionSpaceInInference]
-        jointHypothesisSpace = pd.MultiIndex.from_product(variables, names=['intention', 'action'])
+        variables = [intentionSpace]
+        jointHypothesisSpace = pd.MultiIndex.from_product(variables, names=['intention'])
         concernedHypothesisVariable = ['intention']
         inferImaginedWe = [InferOneStep(priorDecayRate, jointHypothesisSpace,
                 concernedHypothesisVariable, calJointLikelihood) for calJointLikelihood in calJointLikelihoods]

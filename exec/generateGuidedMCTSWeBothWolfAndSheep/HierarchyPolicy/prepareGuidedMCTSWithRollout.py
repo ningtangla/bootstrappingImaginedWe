@@ -28,10 +28,10 @@ def main():
     generateTrajectoriesParallel = GenerateTrajectoriesParallel(sampleTrajectoryFileName, numTrajectories, numCmdList)
 
     print("start")
-    trainableAgentIds = [wolfId]
-    for agentId in trainableAgentIds:
-        print("agent {}".format(agentId))
-        pathParameters = {'agentId': agentId}
+    numSheepList = [2, 4, 8]
+    for numSheep in numSheepList:
+        print("numSheep {}".format(numSheep))
+        pathParameters = {'numSheep': numSheep}
 
         cmdList = generateTrajectoriesParallel(pathParameters)
         print(cmdList)
