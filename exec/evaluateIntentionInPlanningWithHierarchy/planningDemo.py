@@ -33,17 +33,19 @@ def updateColorSpace(colorSpace, posterior, intentionSpace, imaginedWeIds):
 
 def main():
     DIRNAME = os.path.dirname(__file__)
-    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchyGuidedMCTSBothWolfSheep',
+    #trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchyGuidedMCTSBothWolfSheep',
+    #                                'trajectories')
+    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchy',
                                     'trajectories')
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)
     
-    NNNumSimulations = 200
-    maxRunningSteps = 101
-    softParameterInPlanning = 2.5
-    sheepPolicyName = 'maxNNPolicy'
-    wolfPolicyName = 'maxNNPolicy'
-    hierarchy = 2
+    NNNumSimulations = 400
+    maxRunningSteps = 50
+    softParameterInPlanning = 12.5
+    sheepPolicyName = 'sampleNNPolicy'
+    wolfPolicyName = 'sampleNNPolicy'
+    hierarchy = 0
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
             'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': hierarchy, 'NNNumSimulations': NNNumSimulations}
     trajectoryExtension = '.pickle'
@@ -51,8 +53,9 @@ def main():
 
     # Compute Statistics on the Trajectories
     loadTrajectories = LoadTrajectories(getTrajectorySavePath, loadFromPickle)
-    numWolves = 2
-    trajectoryParameters = {'numWolves': numWolves}
+    numWolves = 3
+    numSheep = 1
+    trajectoryParameters = {'numWolves': numWolves, 'numSheep': numSheep}
     trajectories = loadTrajectories(trajectoryParameters) 
     # generate demo image
     screenWidth = 600
@@ -66,7 +69,6 @@ def main():
     drawBackground = DrawBackground(screen, screenColor, xBoundary, yBoundary, lineColor, lineWidth)
     
     FPS = 30
-    numSheep = 2
     circleColorSpace = [[100, 100, 100]]*numSheep + [[255, 255, 255]] * numWolves
     circleSize = 10
     positionIndex = [0, 1]
@@ -81,7 +83,7 @@ def main():
         os.makedirs(saveImageDir)
     intentionSpace = list(it.product(range(numSheep)))
     imaginedWeIdsForInferenceSubject = list(range(numSheep, numWolves + numSheep))
-    softParameter = 0.7
+    softParameter = 1
     softFunction = SoftPolicy(softParameter)
     updateColorSpaceByPosterior = lambda colorSpace, posterior : updateColorSpace(
             colorSpace, [softFunction(individualPosterior) for individualPosterior in posterior], intentionSpace, imaginedWeIdsForInferenceSubject)
@@ -112,8 +114,8 @@ def main():
     index = np.argsort(-np.array(lens))
     print(index)
     print(trajectories[0][1])
-    [chaseTrial(trajectory) for trajectory in np.array(trajectories)[index[[15, 16, 17, 18, 19, 20]]]]
-    #[chaseTrial(trajectory) for trajectory in np.array(trajectories)[index[15:]]]
+    #[chaseTrial(trajectory) for trajectory in np.array(trajectories)[index[0:10]]]
+    [chaseTrial(trajectory) for trajectory in np.array(trajectories)[index[5:]]]
 
 if __name__ == '__main__':
     main()

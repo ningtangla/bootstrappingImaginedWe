@@ -17,7 +17,7 @@ import math
 
 from src.MDPChasing.state import GetAgentPosFromState, GetStateForPolicyGivenIntention
 from src.MDPChasing.policies import RandomPolicy, PolicyOnChangableIntention, SoftPolicy, RecordValuesForPolicyAttributes, ResetPolicy
-from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal, InterpolateState
+from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal, TransitWithInterpolateState
 from src.centralControl import AssignCentralControlToIndividual
 from src.trajectory import SampleTrajectory
 from src.chooseFromDistribution import sampleFromDistribution, maxFromDistribution
@@ -40,11 +40,11 @@ class SampleTrjactoriesForConditions:
     def __call__(self, parameters):
         print(parameters)
         numWolves = parameters['numWolves']
+        numSheep = parameters['numSheep']
         
         # MDP Env
         xBoundary = [0,600]
         yBoundary = [0,600]
-        numSheep = 2
         numOfAgent = numWolves + numSheep
         reset = Reset(xBoundary, yBoundary, numOfAgent)
         
@@ -97,7 +97,7 @@ class SampleTrjactoriesForConditions:
         initializationMethod = 'uniform'
         initWolfCentralControlModel = generateWolfCentralControlModel(sharedWidths * wolfNNDepth, actionLayerWidths, valueLayerWidths, 
                 resBlockSize, initializationMethod, dropoutRate)
-        NNNumSimulations = 300
+        NNNumSimulations = 200
         wolfModelPath = os.path.join('..', '..', 'data', 'preTrainModel', 
                 'agentId='+str(9 * np.sum([10**_ for _ in
                 range(numWolves)]))+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations='+str(NNNumSimulations)+'_trainSteps=50000')
@@ -118,17 +118,16 @@ class SampleTrjactoriesForConditions:
         calActionPerceptionLikelihood = lambda action, perceivedAction: int(np.allclose(np.array(action), np.array(perceivedAction)))
 
         # Joint Likelihood
-        composeCalJointLikelihood = lambda calPolicyLikelihood, calActionPerceptionLikelihood: lambda intention, state, action, perceivedAction: \
-            calPolicyLikelihood(intention, state, action) * calActionPerceptionLikelihood(action, perceivedAction)
-        calJointLikelihoods = [composeCalJointLikelihood(calPolicyLikelihood, calActionPerceptionLikelihood) 
+        composeCalJointLikelihood = lambda calPolicyLikelihood: lambda intention, state, perceivedAction: \
+            calPolicyLikelihood(intention, state, perceivedAction)
+        calJointLikelihoods = [composeCalJointLikelihood(calPolicyLikelihood) 
             for calPolicyLikelihood in calPoliciesLikelihood]
 
         # Joint Hypothesis Space
         priorDecayRate = 1
         intentionSpace = [(id,) for id in range(numSheep)]
-        actionSpaceInInference = wolfCentralControlActionSpace
-        variables = [intentionSpace, actionSpaceInInference]
-        jointHypothesisSpace = pd.MultiIndex.from_product(variables, names=['intention', 'action'])
+        variables = [intentionSpace]
+        jointHypothesisSpace = pd.MultiIndex.from_product(variables, names=['intention'])
         concernedHypothesisVariable = ['intention']
         inferImaginedWe = [InferOneStep(priorDecayRate, jointHypothesisSpace,
                 concernedHypothesisVariable, calJointLikelihood) for calJointLikelihood in calJointLikelihoods]
@@ -159,7 +158,7 @@ class SampleTrjactoriesForConditions:
         initSheepCentralControlModel = generateSheepCentralControlModel(sharedWidths * sheepNNDepth, actionLayerWidths, valueLayerWidths, 
                 resBlockSize, initializationMethod, dropoutRate)
         sheepModelPath = os.path.join('..', '..', 'data', 'preTrainModel',
-                'agentId=0.'+str(numWolves)+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=100_trainSteps=50000')
+                'agentId=0.'+str(numWolves)+'_depth=9_learningRate=0.0001_maxRunningSteps=50_miniBatchSize=256_numSimulations=110_trainSteps=50000')
         sheepCentralControlNNModel = restoreVariables(initSheepCentralControlModel, sheepModelPath)
         sheepCentralControlPolicyGivenIntention = ApproximatePolicy(sheepCentralControlNNModel, sheepCentralControlActionSpace)
 
@@ -197,8 +196,8 @@ class SampleTrjactoriesForConditions:
         recordActionForPolicy = RecordValuesForPolicyAttributes(attributesToRecord, individualPolicies) 
         
         # Sample and Save Trajectory
-        maxRunningSteps = 100 
-        transitInPlay = InterpolateState(3, transit, isTerminal)
+        maxRunningSteps = 50 
+        transitInPlay = TransitWithInterpolateState(3, transit, isTerminal)
         sampleTrajectory = SampleTrajectory(maxRunningSteps, transitInPlay, isTerminal,
                 reset, individualActionMethods, resetPolicy,
                 recordActionForPolicy)
@@ -213,7 +212,8 @@ class SampleTrjactoriesForConditions:
 def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
-    manipulatedVariables['numWolves'] = [2]
+    manipulatedVariables['numWolves'] = [3]
+    manipulatedVariables['numSheep'] = [2, 4]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
     modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)
@@ -232,7 +232,7 @@ def main():
     getTrajectorySavePath = lambda trajectoryFixedParameters: GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
     saveTrajectoryByParameters = lambda trajectories, trajectoryFixedParameters, parameters: saveToPickle(trajectories, getTrajectorySavePath(trajectoryFixedParameters)(parameters))
    
-    numTrajectories = 500
+    numTrajectories = 200
     sampleTrajectoriesForConditions = SampleTrjactoriesForConditions(numTrajectories, saveTrajectoryByParameters)
     [sampleTrajectoriesForConditions(para) for para in parametersAllCondtion]
     # Compute Statistics on the Trajectories

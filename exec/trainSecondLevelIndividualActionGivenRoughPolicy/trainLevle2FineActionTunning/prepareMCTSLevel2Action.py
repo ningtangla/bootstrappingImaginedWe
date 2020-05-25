@@ -16,9 +16,9 @@ def main():
     wolfId = 1
 
     startTime = time.time()
-    numTrajectories = 200
+    numTrajectories = 3000
     # generate and load trajectories before train parallelly
-    sampleTrajectoryFileName = 'sampleGuidedMCTSWeWithRollout.py'
+    sampleTrajectoryFileName = 'sampleMCTSLevel2Action.py'
 
     numCpuCores = os.cpu_count()
     print(numCpuCores)
@@ -28,10 +28,10 @@ def main():
     generateTrajectoriesParallel = GenerateTrajectoriesParallel(sampleTrajectoryFileName, numTrajectories, numCmdList)
 
     print("start")
-    numSheepList = [2, 4, 8]
-    for numSheep in numSheepList:
-        print("numSheep {}".format(numSheep))
-        pathParameters = {'numSheep': numSheep}
+    trainableAgentIds = [wolfId]
+    for agentId in trainableAgentIds:
+        print("agent {}".format(agentId))
+        pathParameters = {'agentId': agentId}
 
         cmdList = generateTrajectoriesParallel(pathParameters)
         print(cmdList)

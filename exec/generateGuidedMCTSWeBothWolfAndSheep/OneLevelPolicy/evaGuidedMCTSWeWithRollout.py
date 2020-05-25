@@ -20,7 +20,7 @@ from src.MDPChasing.reward import RewardFunctionCompete
 
 if __name__ == '__main__':
     dirName = os.path.dirname(__file__)
-    #trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRolloutBothWolfSheep', 'OneLeveLPolicy', 'trajectories')
+    trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRolloutBothWolfSheep', 'OneLeveLPolicy', 'trajectories')
     trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'generateGuidedMCTSWeWithRolloutBothWolfSheep', 'HierarchyPolicy', 'trajectories')
     trajectorySaveExtension = '.pickle'
     saveTrajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchyGuidedMCTSBothWolfSheep', 'trajectories')
@@ -30,7 +30,8 @@ if __name__ == '__main__':
 
     NNNumSimulations = 200  # 300 with distance Herustic; 200 without distanceHerustic
     diff = []
-    for maxStep in range(30, 51):
+    numSheep = 2
+    for maxStep in range(20, 51):
         result = []
         for numOneWolfActionSpace in [5]:
             numWolves = 3
@@ -45,11 +46,11 @@ if __name__ == '__main__':
 
             fuzzySearchParameterNames = ['sampleIndex']
             loadTrajectories = LoadTrajectories(generateTrajectorySavePath, loadFromPickle, fuzzySearchParameterNames)
-            loadedTrajectories = loadTrajectories({'agentId': 1})
+            loadedTrajectories = loadTrajectories({'numSheep': numSheep})
              
             hierarchy = 2
             trajectorySaveFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
-                                         'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': hierarchy, 'numWolves': numWolves}
+                    'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': hierarchy, 'numSheep':numSheep, 'numWolves': numWolves}
             generateTrajectorySavePathForResave = GetSavePath(saveTrajectoriesSaveDirectory, trajectorySaveExtension, trajectorySaveFixedParameters)
             trajectoriesResavePath = generateTrajectorySavePathForResave({})
             saveToPickle(loadedTrajectories, trajectoriesResavePath)
@@ -69,8 +70,6 @@ if __name__ == '__main__':
     # accumulate reward
             xBoundary = [0, 600]
             yBoundary = [0, 600]
-            numSheep = 2
-            numWolves = 2
             numOfAgent = numWolves + numSheep
             reset = Reset(xBoundary, yBoundary, numOfAgent)
 

@@ -106,7 +106,6 @@ class SampleTrajectoryWithRender:
             state = nextState
             if self.recordActionForPolicy:
                 self.recordActionForPolicy([action])
-
         if self.resetPolicy:
             policyAttributes = self.resetPolicy()
             if policyAttributes:

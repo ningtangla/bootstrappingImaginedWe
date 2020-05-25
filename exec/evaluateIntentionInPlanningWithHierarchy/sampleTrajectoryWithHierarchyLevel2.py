@@ -201,7 +201,7 @@ class SampleTrjactoriesForConditions:
 
         individualIdsForAllAgents = list(range(numWolves + numSheep))
         actionChoiceMethods = {'sampleNNPolicy': sampleFromDistribution, 'maxNNPolicy': maxFromDistribution}
-        sheepPolicyName = 'maxNNPolicy'
+        sheepPolicyName = 'sampleNNPolicy'
         wolfPolicyName = 'sampleNNPolicy'
         chooseCentrolAction = [actionChoiceMethods[sheepPolicyName]]* numSheep + [actionChoiceMethods[wolfPolicyName]]* numWolves
         assignIndividualAction = [AssignCentralControlToIndividual(imaginedWeId, individualId) for imaginedWeId, individualId in
@@ -236,7 +236,7 @@ def main():
     # manipulated variables
     manipulatedVariables = OrderedDict()
     manipulatedVariables['numWolves'] = [3]
-    manipulatedVariables['numSheep'] = [2, 4, 8]
+    manipulatedVariables['numSheep'] = [2, 4]
     levelNames = list(manipulatedVariables.keys())
     levelValues = list(manipulatedVariables.values())
     modelIndex = pd.MultiIndex.from_product(levelValues, names=levelNames)

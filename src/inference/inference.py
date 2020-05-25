@@ -51,8 +51,8 @@ class InferOneStepWithActionNoise:
         #jointHypothesisDf['jointLikelihood'] = jointHypothesisDf.apply(lambda row: self.calJointLikelihood(row.name[0], state, row.name[1], nextState))
         marginalLikelihood = jointHypothesisDf.groupby(self.concernedHypothesisVariable).sum()
         oneStepLikelihood = marginalLikelihood['likelihood'].to_dict()
-        decayedLogPrior = {key: np.log(value) * self.priorDecayRate for key, value in intentionPrior.items()}
-        unnomalizedPosterior = {key: np.exp(decayedLogPrior[key] + np.log(oneStepLikelihood[key] + 1e-3)) for key in list(intentionPrior.keys())}
+        decayedLogPrior = {key: (np.log(value) + 1e-4) * self.priorDecayRate for key, value in intentionPrior.items()}
+        unnomalizedPosterior = {key: np.exp(decayedLogPrior[key] + np.log(oneStepLikelihood[key] + 1e-6)) for key in list(intentionPrior.keys())}
         normalizedProbabilities = np.array(list(unnomalizedPosterior.values())) / np.sum(list(unnomalizedPosterior.values()))
         normalizedPosterior = dict(zip(list(unnomalizedPosterior.keys()),normalizedProbabilities))
         return normalizedPosterior
