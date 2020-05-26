@@ -50,7 +50,7 @@ def main():
 
     trajectorySaveExtension = '.pickle'
     maxRunningSteps = 50
-    numSimulations = 150
+    numSimulations = 200
     killzoneRadius = 50
     numSheep = 1
     numWolves = 3
@@ -126,7 +126,7 @@ def main():
         initWolvesRoughNNModel = generateWolvesModel(sharedWidths * depth, actionLayerWidths, valueLayerWidths, resBlockSize, initializationMethod, dropoutRate)
         wolvesRoughTrainedModel = restoreVariables(initWolvesRoughNNModel, wolvesRoughTrainedModelPath)
         wolvesRoughPolicy = ApproximatePolicy(wolvesRoughTrainedModel, wolfCentralControlActionSpace)
-        sampleJointRoughAction = lambda multiAgentPositions: sampleFromDistribution(wolvesRoughPolicy(multiAgentPositions))
+        sampleJointRoughAction = lambda multiAgentPositions: sampleFromDistribution(softPolicy(wolvesRoughPolicy(multiAgentPositions)))
         
         # transitCentralControl
         xBoundary = [0, 600]
@@ -142,7 +142,7 @@ def main():
         
         # MCTS
         cInit = 1
-        cBase = 50
+        cBase = 100
         calculateScore = ScoreChild(cInit, cBase)
         selectChild = SelectChild(calculateScore)
 
