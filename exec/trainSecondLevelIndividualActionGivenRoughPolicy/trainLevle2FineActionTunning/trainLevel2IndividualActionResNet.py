@@ -65,7 +65,7 @@ def trainOneCondition(manipulatedVariables):
     # Get dataset for training
     DIRNAME = os.path.dirname(__file__)
     numSheep = 1
-    numWolves = 3
+    numWolves = 2
     dataSetDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'trainLevel2FineActionTunning', str(numWolves)+'Wolves', 'trajectories')
 
     if not os.path.exists(dataSetDirectory):
@@ -73,7 +73,7 @@ def trainOneCondition(manipulatedVariables):
 
     dataSetExtension = '.pickle'
     dataSetMaxRunningSteps = 50
-    dataSetNumSimulations = 150
+    dataSetNumSimulations = 2
     killzoneRadius = 50
     agentId = 1
     wolvesId = 0
@@ -124,7 +124,8 @@ def trainOneCondition(manipulatedVariables):
     filterState = lambda timeStep: (np.concatenate(timeStep[0]), timeStep[1], timeStep[2])  # !!? magic
     trajectories = [[filterState(timeStep) for timeStep in trajectory] for trajectory in loadedTrajectories]
     print(len(trajectories))
-
+    print(np.mean([len(tra) for tra in trajectories]))
+    __import__('ipdb').set_trace()
     preProcessedTrajectories = np.concatenate(preProcessTrajectories(trajectories))
     trainData = [list(varBatch) for varBatch in zip(*preProcessedTrajectories)]
     valuedTrajectories = [addValuesToTrajectory(tra) for tra in trajectories]
@@ -197,8 +198,8 @@ def main():
     trainPool = mp.Pool(numCpuToUse)
 
     startTime = time.time()
-
-    trainPool.map(trainOneCondition, parametersAllCondtion)
+    trainOneCondition(parametersAllCondtion[0])
+    #trainPool.map(trainOneCondition, parametersAllCondtion)
 
     endTime = time.time()
     print("Time taken {} seconds".format((endTime - startTime)))

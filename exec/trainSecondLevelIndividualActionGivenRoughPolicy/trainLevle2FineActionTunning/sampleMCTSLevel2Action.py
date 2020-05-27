@@ -27,12 +27,12 @@ from src.chooseFromDistribution import sampleFromDistribution, maxFromDistributi
 
 
 def main():
-    DEBUG = 0
-    renderOn = 0 
+    DEBUG = 1
+    renderOn = 1 
     if DEBUG:
         parametersForTrajectoryPath = {}
         startSampleIndex = 1
-        endSampleIndex = 6
+        endSampleIndex = 3
         agentId = 1
         parametersForTrajectoryPath['sampleIndex'] = (startSampleIndex, endSampleIndex)
     else:
@@ -44,16 +44,16 @@ def main():
 
     # check file exists or not
     dirName = os.path.dirname(__file__)
-    trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'trainLevel2FineActionTunning', '3Wolves', 'trajectories')
+    numWolves = 2
+    trajectoriesSaveDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'trainLevel2FineActionTunning', str(numWolves)+'Wolves', 'trajectories')
     if not os.path.exists(trajectoriesSaveDirectory):
         os.makedirs(trajectoriesSaveDirectory)
 
     trajectorySaveExtension = '.pickle'
     maxRunningSteps = 50
-    numSimulations = 200
+    numSimulations = 150
     killzoneRadius = 50
     numSheep = 1
-    numWolves = 3
     fixedParameters = {'agentId': agentId, 'maxRunningSteps': maxRunningSteps, 'numSimulations': numSimulations, 'killzoneRadius': killzoneRadius}
 
     generateTrajectorySavePath = GetSavePath(trajectoriesSaveDirectory, trajectorySaveExtension, fixedParameters)
@@ -69,7 +69,6 @@ def main():
         getPreyPos = GetAgentPosFromState(possiblePreyIds, posIndexInState)
         getPredatorPos = GetAgentPosFromState(possiblePredatorIds, posIndexInState)
         isTerminalFromPositions = IsTerminal(killzoneRadius, getPreyPos, getPredatorPos)
-        positionId = 0
         isTerminal = lambda state: isTerminalFromPositions(state[0])
 
         # space
@@ -79,7 +78,6 @@ def main():
 
         wolfRoughActionSpace = [(10, 0), (0, 10), (-10, 0), (0, -10)]
         predatorPowerRatio = 8
-        wolfIndividualRoughActionSpace = list(map(tuple, np.array(wolfRoughActionSpace) * predatorPowerRatio))
         wolfIndividualRoughActionSpace = list(map(tuple, np.array(wolfRoughActionSpace) * predatorPowerRatio))
         wolfCentralControlActionSpace = list(it.product(wolfIndividualRoughActionSpace, repeat=numWolves))
         
@@ -112,7 +110,7 @@ def main():
 
         sheepTrainedModel = restoreVariables(initSheepNNModel, sheepTrainedModelPath)
         sheepPolicy = ApproximatePolicy(sheepTrainedModel, sheepActionSpace)
-        softPolicy = SoftPolicy(2.5)
+        softPolicy = SoftPolicy(2.0)
         sampleSheepAction = lambda multiAgentPositions: sampleFromDistribution(softPolicy(sheepPolicy(multiAgentPositions)))
         
         # wolves Rough Policy

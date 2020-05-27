@@ -18,7 +18,7 @@ class TransitWithTunnedAction:
         jointAction = roughJointAction.copy()
         jointAction[self.tunningAgentIndexInGroup] = tunnedAction
         multiAgentsNextStates =  self.transitInEnv(multiAgentsStates, jointAction)
-        nextRoughAction = self.sampleRoughAction(multiAgentsStates)
+        nextRoughAction = self.sampleRoughAction(multiAgentsNextStates)
         nextState = np.array([multiAgentsNextStates]+ [list(nextRoughAction)])
         return nextState
 

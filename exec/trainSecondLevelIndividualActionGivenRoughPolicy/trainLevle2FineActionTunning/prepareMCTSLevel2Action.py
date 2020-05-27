@@ -16,7 +16,7 @@ def main():
     wolfId = 1
 
     startTime = time.time()
-    numTrajectories = 3000
+    numTrajectories = 500
     # generate and load trajectories before train parallelly
     sampleTrajectoryFileName = 'sampleMCTSLevel2Action.py'
 
