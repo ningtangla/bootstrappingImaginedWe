@@ -65,7 +65,7 @@ def trainOneCondition(manipulatedVariables):
     # Get dataset for training
     DIRNAME = os.path.dirname(__file__)
     numSheep = 1
-    numWolves = 2
+    numWolves = 3
     dataSetDirectory = os.path.join(dirName, '..', '..', '..', 'data', 'trainLevel2FineActionTunning', str(numWolves)+'Wolves', 'trajectories')
 
     if not os.path.exists(dataSetDirectory):
@@ -73,7 +73,7 @@ def trainOneCondition(manipulatedVariables):
 
     dataSetExtension = '.pickle'
     dataSetMaxRunningSteps = 50
-    dataSetNumSimulations = 2
+    dataSetNumSimulations = 150
     killzoneRadius = 50
     agentId = 1
     wolvesId = 0
@@ -120,7 +120,6 @@ def trainOneCondition(manipulatedVariables):
     loadTrajectories = LoadTrajectories(getDataSetSavePath, loadFromPickle, fuzzySearchParameterNames)
     loadedTrajectories = loadTrajectories(parameters={})
     # print(loadedTrajectories[0])
-
     filterState = lambda timeStep: (np.concatenate(timeStep[0]), timeStep[1], timeStep[2])  # !!? magic
     trajectories = [[filterState(timeStep) for timeStep in trajectory] for trajectory in loadedTrajectories]
     print(len(trajectories))

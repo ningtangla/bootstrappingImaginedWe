@@ -33,19 +33,19 @@ def updateColorSpace(colorSpace, posterior, intentionSpace, imaginedWeIds):
 
 def main():
     DIRNAME = os.path.dirname(__file__)
-    #trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchyGuidedMCTSBothWolfSheep',
-    #                                'trajectories')
-    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchy',
+    trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchyGuidedMCTSBothWolfSheep',
                                     'trajectories')
+    #trajectoryDirectory = os.path.join(DIRNAME, '..', '..', 'data', 'evaluateIntentionInPlanningWithHierarchy',
+    #                                'trajectories')
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)
     
-    NNNumSimulations = 400
-    maxRunningSteps = 50
-    softParameterInPlanning = 12.5
-    sheepPolicyName = 'sampleNNPolicy'
-    wolfPolicyName = 'sampleNNPolicy'
-    hierarchy = 0
+    NNNumSimulations = 200
+    maxRunningSteps = 101
+    softParameterInPlanning = 2.5
+    sheepPolicyName = 'maxNNPolicy'
+    wolfPolicyName = 'maxNNPolicy'
+    hierarchy = 2
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName,
             'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': hierarchy, 'NNNumSimulations': NNNumSimulations}
     trajectoryExtension = '.pickle'
@@ -54,7 +54,7 @@ def main():
     # Compute Statistics on the Trajectories
     loadTrajectories = LoadTrajectories(getTrajectorySavePath, loadFromPickle)
     numWolves = 3
-    numSheep = 1
+    numSheep = 2
     trajectoryParameters = {'numWolves': numWolves, 'numSheep': numSheep}
     trajectories = loadTrajectories(trajectoryParameters) 
     # generate demo image
