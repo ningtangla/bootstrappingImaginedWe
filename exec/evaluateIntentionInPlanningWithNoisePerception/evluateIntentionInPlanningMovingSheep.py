@@ -6,18 +6,18 @@ sys.path.append(os.path.join(dirName, '..', '..'))
 
 import random
 import numpy as np
-import scipy.stats 
+import scipy.stats
 import pickle
 from collections import OrderedDict
 import pandas as pd
 from matplotlib import pyplot as plt
 import itertools as it
 import pathos.multiprocessing as mp
-import math 
+import math
 
 from src.MDPChasing.state import GetAgentPosFromState, GetStateForPolicyGivenIntention
 from src.MDPChasing.policies import RandomPolicy, PolicyOnChangableIntention, SoftPolicy, RecordValuesForPolicyAttributes, ResetPolicy
-from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal
+from src.MDPChasing.envNoPhysics import Reset, StayInBoundaryByReflectVelocity, TransitForNoPhysics, IsTerminal, TransitWithInterpolateState
 from src.centralControl import AssignCentralControlToIndividual
 from src.trajectory import SampleTrajectory
 from src.chooseFromDistribution import sampleFromDistribution, maxFromDistribution
@@ -70,7 +70,7 @@ def main():
     yBoundary = [0,600]
     numOfAgent = 4
     reset = Reset(xBoundary, yBoundary, numOfAgent)
-    
+
     stayInBoundaryByReflectVelocity = StayInBoundaryByReflectVelocity(xBoundary, yBoundary)
     transit = TransitForNoPhysics(stayInBoundaryByReflectVelocity)
 
@@ -86,7 +86,7 @@ def main():
     sheepImagindWeIntentionPrior = {(2, 3): 1}
     wolfImaginedWeIntentionPrior = {(0, ):0.5, (1,): 0.5}
     imaginedWeIntentionPriors = [sheepImagindWeIntentionPrior, sheepImagindWeIntentionPrior, wolfImaginedWeIntentionPrior, wolfImaginedWeIntentionPrior]
-    
+
     imaginedWeIdsForInferenceSubjects = [[2, 3], [3, 2]]
     composePerceptSelfAction = lambda noise: SampleNoisyAction(noise)
     composePerceptOtherAction = lambda noise: SampleNoisyAction(noise)
@@ -115,9 +115,9 @@ def main():
     resBlockSize = 2
     dropoutRate = 0.0
     initializationMethod = 'uniform'
-    initWolfCentralControlModel = generateWolfCentralControlModel(sharedWidths * wolfNNDepth, actionLayerWidths, valueLayerWidths, 
+    initWolfCentralControlModel = generateWolfCentralControlModel(sharedWidths * wolfNNDepth, actionLayerWidths, valueLayerWidths,
             resBlockSize, initializationMethod, dropoutRate)
-    wolfModelPath = os.path.join('..', '..', 'data', 'preTrainModel', 
+    wolfModelPath = os.path.join('..', '..', 'data', 'preTrainModel',
             'agentId=1_depth=9_learningRate=0.0001_maxRunningSteps=100_miniBatchSize=256_numSimulations=200_trainSteps=50000')
     wolfCentralControlNNModel = restoreVariables(initWolfCentralControlModel, wolfModelPath)
     wolfCentralControlPolicyGivenIntention = ApproximatePolicy(wolfCentralControlNNModel, wolfCentralControlActionSpace)
@@ -125,22 +125,22 @@ def main():
     softParameterInInference = 1
     softPolicyInInference = SoftPolicy(softParameterInInference)
     softenWolfCentralControlPolicyGivenIntentionInInference = lambda state: softPolicyInInference(wolfCentralControlPolicyGivenIntention(state))
-    
-    getStateForPolicyGivenIntentionInInferences = [GetStateForPolicyGivenIntention(imaginedWeIds) 
-            for imaginedWeIds in imaginedWeIdsForInferenceSubjects] 
 
-    calPoliciesLikelihood = [CalPolicyLikelihood(getState, softenWolfCentralControlPolicyGivenIntentionInInference) 
+    getStateForPolicyGivenIntentionInInferences = [GetStateForPolicyGivenIntention(imaginedWeIds)
+            for imaginedWeIds in imaginedWeIdsForInferenceSubjects]
+
+    calPoliciesLikelihood = [CalPolicyLikelihood(getState, softenWolfCentralControlPolicyGivenIntentionInInference)
             for getState in getStateForPolicyGivenIntentionInInferences]
 
-    # ActionPerception Likelihood 
+    # ActionPerception Likelihood
     composeCalActionPerceptionLikelihood = lambda perceptNoise : lambda action, perceivedAction: np.prod([scipy.stats.multivariate_normal.pdf(
         perceivedAction[index], action[index], np.diag([perceptNoise**2] * len(action[index]))) for index in range(len(action))])
-    #composeCalActionPerceptionLikelihood = lambda perceptNoise : ActionPerceptionLikelihood(perceptNoise) 
+    #composeCalActionPerceptionLikelihood = lambda perceptNoise : ActionPerceptionLikelihood(perceptNoise)
 
     # Joint Likelihood
     composeCalJointLikelihood = lambda calPolicyLikelihood, calActionPerceptionLikelihood: lambda intention, state, action, perceivedAction: \
         calPolicyLikelihood(intention, state, action) * calActionPerceptionLikelihood(action, perceivedAction)
-    getCalJointLikelihood = lambda perceptNoise: [composeCalJointLikelihood(calPolicyLikelihood, composeCalActionPerceptionLikelihood(perceptNoise)) 
+    getCalJointLikelihood = lambda perceptNoise: [composeCalJointLikelihood(calPolicyLikelihood, composeCalActionPerceptionLikelihood(perceptNoise))
         for calPolicyLikelihood in calPoliciesLikelihood]
 
     # Joint Hypothesis Space
@@ -154,7 +154,7 @@ def main():
             concernedHypothesisVariable, calJointLikelihood) for calJointLikelihood in getCalJointLikelihood(perceptNoise)]
     getUpdateIntention = lambda perceptNoise: [sheepUpdateIntentionMethod, sheepUpdateIntentionMethod] + composeInferImaginedWe(perceptNoise)
     chooseIntention = sampleFromDistribution
-    
+
     # Get State of We and Intention
     imaginedWeIdsForAllAgents = [[0], [1], [2, 3], [3, 2]]
     getStateForPolicyGivenIntentions = [GetStateForPolicyGivenIntention(imaginedWeId) for imaginedWeId in imaginedWeIdsForAllAgents]
@@ -174,7 +174,7 @@ def main():
     resBlockSize = 2
     dropoutRate = 0.0
     initializationMethod = 'uniform'
-    initSheepCentralControlModel = generateSheepCentralControlModel(sharedWidths * sheepNNDepth, actionLayerWidths, valueLayerWidths, 
+    initSheepCentralControlModel = generateSheepCentralControlModel(sharedWidths * sheepNNDepth, actionLayerWidths, valueLayerWidths,
             resBlockSize, initializationMethod, dropoutRate)
     sheepModelPath = os.path.join('..', '..', 'data', 'preTrainModel',
             'agentId=0_depth=5_learningRate=0.0001_maxRunningSteps=150_miniBatchSize=256_numSimulations=200_trainSteps=50000')
@@ -187,9 +187,9 @@ def main():
     softenWolfCentralControlPolicyGivenIntentionInPlanning = lambda state: softPolicyInPlanning(wolfCentralControlPolicyGivenIntention(state))
     centralControlPoliciesGivenIntentions = [softensheepCentralControlPolicyGivenIntentionInPlanning, softensheepCentralControlPolicyGivenIntentionInPlanning,
             softenWolfCentralControlPolicyGivenIntentionInPlanning, softenWolfCentralControlPolicyGivenIntentionInPlanning]
-    composeIndividualPoliciesByEvaParameters = lambda perceptNoise: [PolicyOnChangableIntention(perceptImaginedWeAction, 
-        imaginedWeIntentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention) 
-            for perceptImaginedWeAction, imaginedWeIntentionPrior, getStateForPolicyGivenIntention, updateIntentionDistribution, policyGivenIntention 
+    composeIndividualPoliciesByEvaParameters = lambda perceptNoise: [PolicyOnChangableIntention(perceptImaginedWeAction,
+        imaginedWeIntentionPrior, updateIntentionDistribution, chooseIntention, getStateForPolicyGivenIntention, policyGivenIntention)
+            for perceptImaginedWeAction, imaginedWeIntentionPrior, getStateForPolicyGivenIntention, updateIntentionDistribution, policyGivenIntention
             in zip(getPerceptActionForAll(perceptNoise), imaginedWeIntentionPriors, getStateForPolicyGivenIntentions, getUpdateIntention(perceptNoise), centralControlPoliciesGivenIntentions)]
 
     individualIdsForAllAgents = [0, 1, 2, 3]
@@ -197,19 +197,21 @@ def main():
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
     chooseCentrolAction = [actionChoiceMethods[sheepPolicyName]]* 2 + [actionChoiceMethods[wolfPolicyName]]* 2
-    assignIndividualAction = [AssignCentralControlToIndividual(imaginedWeId, individualId) 
+    assignIndividualAction = [AssignCentralControlToIndividual(imaginedWeId, individualId)
             for imaginedWeId, individualId in zip(imaginedWeIdsForAllAgents, individualIdsForAllAgents)]
     getIndividualActionMethods = [lambda centrolActionDist: assign(chooseAction(centrolActionDist)) for assign, chooseAction in zip(assignIndividualAction, chooseCentrolAction)]
-    
+
     policiesResetAttributes = ['timeStep', 'lastAction', 'lastState', 'intentionPrior', 'formerIntentionPriors']
     policiesResetAttributeValues = [dict(zip(policiesResetAttributes, [0, None, None, intentionPrior, [intentionPrior]])) for intentionPrior in imaginedWeIntentionPriors]
     returnAttributes = ['formerIntentionPriors']
     composeResetPolicy = lambda individualPolicies: ResetPolicy(policiesResetAttributeValues, individualPolicies, returnAttributes)
     attributesToRecord = ['lastAction']
-    composeRecordActionForPolicy = lambda individualPolicies: RecordValuesForPolicyAttributes(attributesToRecord, individualPolicies) 
-    
+    composeRecordActionForPolicy = lambda individualPolicies: RecordValuesForPolicyAttributes(attributesToRecord, individualPolicies)
+
     # Sample and Save Trajectory
-    composeSampleTrajectory = lambda maxRunningSteps, individualPolicies: SampleTrajectory(maxRunningSteps, transit, isTerminal, reset,
+    numFrameToInterpolate = 3
+    transitInPlay = TransitWithInterpolateState(numFrameToInterpolate, transit, isTerminal)
+    composeSampleTrajectory = lambda maxRunningSteps, individualPolicies: SampleTrajectory(maxRunningSteps, transitInPlay, isTerminal, reset,
             getIndividualActionMethods, composeResetPolicy(individualPolicies), composeRecordActionForPolicy(individualPolicies))
 
     DIRNAME = os.path.dirname(__file__)
@@ -223,7 +225,7 @@ def main():
     trajectoryExtension = '.pickle'
     getTrajectorySavePath = GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
     saveTrajectoryByParameters = lambda trajectories, parameters: saveToPickle(trajectories, getTrajectorySavePath(parameters))
-   
+
     numTrajectories = 200
     sampleTrajectoriesForConditions = SampleTrjactoriesForConditions(numTrajectories, composeIndividualPoliciesByEvaParameters,
             composeSampleTrajectory, saveTrajectoryByParameters)
@@ -232,13 +234,13 @@ def main():
     # Compute Statistics on the Trajectories
     loadTrajectories = LoadTrajectories(getTrajectorySavePath, loadFromPickle)
     loadTrajectoriesFromDf = lambda df: loadTrajectories(readParametersFromDf(df))
-    
+
     possibleIntentionIds = [[0],[1]]
     wolfImaginedWeId = [2, 3]
     stateIndexInTimestep = 0
     judgeSuccessCatchOrEscape = lambda booleanSign: int(booleanSign)
     #measureIntentionArcheivement = lambda df: MeasureIntentionArcheivement(possibleIntentionIds, wolfImaginedWeId, stateIndexInTimestep, posIndexInState, killzoneRadius, judgeSuccessCatchOrEscape)
-    measureIntentionArcheivement = lambda df: lambda trajectory: int(len(trajectory) < readParametersFromDf(df)['maxRunningSteps']) - 1 / readParametersFromDf(df)['maxRunningSteps'] * len(trajectory) 
+    measureIntentionArcheivement = lambda df: lambda trajectory: int(len(trajectory) < readParametersFromDf(df)['maxRunningSteps']) - 1 / readParametersFromDf(df)['maxRunningSteps'] * len(trajectory)
     computeStatistics = ComputeStatistics(loadTrajectoriesFromDf, measureIntentionArcheivement)
     statisticsDf = toSplitFrame.groupby(levelNames).apply(computeStatistics)
     fig = plt.figure()
@@ -246,10 +248,10 @@ def main():
     numColumns = 1
     numRows = len(manipulatedVariables['maxRunningSteps'])
     plotCounter = 1
-    
+
     for maxRunningSteps, group in statisticsDf.groupby('maxRunningSteps'):
         group.index = group.index.droplevel('maxRunningSteps')
-        
+
         axForDraw = fig.add_subplot(numRows, numColumns, plotCounter)
         axForDraw.set_ylabel('Accumulated Reward')
         group.index.name = 'Action Perception Noise'

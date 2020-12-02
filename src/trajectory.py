@@ -17,6 +17,7 @@ class SampleTrajectory:
     def __call__(self, policy):
 
         state = self.resetState()
+
         while self.isTerminal(state):
             state = self.resetState()
 
