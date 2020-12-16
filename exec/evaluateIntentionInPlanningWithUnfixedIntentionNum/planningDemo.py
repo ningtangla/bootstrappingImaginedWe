@@ -23,7 +23,7 @@ from src.MDPChasing.envNoPhysics import TransitForNoPhysics, StayInBoundaryByRef
 from src.MDPChasing.policies import SoftPolicy
 
 def updateColorSpace(colorSpace, posterior, intentionSpace, imaginedWeIds):
-    intentionProbabilities = np.mean([[max(0, 1 * (posterior[individualId][intention] - 1/len(intentionSpace))) 
+    intentionProbabilities = np.mean([[max(0, 1 * (posterior[individualId][intention] - 1/len(intentionSpace)))
         for intention in intentionSpace] for individualId in imaginedWeIds], axis = 0)
     colorRepresentProbability = np.array([np.array([0, 170, 0]) * probability for probability in intentionProbabilities]) + np.array(
             [colorSpace[intention[0]] for intention in intentionSpace])
@@ -37,23 +37,23 @@ def main():
                                     'trajectories')
     if not os.path.exists(trajectoryDirectory):
         os.makedirs(trajectoryDirectory)
-    
+
     maxRunningSteps = 50
     softParameterInPlanning = 2.5
     NNNumSimulations = 200
     sheepPolicyName = 'maxNNPolicy'
     wolfPolicyName = 'sampleNNPolicy'
     trajectoryFixedParameters = {'priorType': 'uniformPrior', 'sheepPolicy': sheepPolicyName, 'wolfPolicy': wolfPolicyName, 'NNNumSimulations': NNNumSimulations,
-            'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': 2}
+            'policySoftParameter': softParameterInPlanning, 'maxRunningSteps': maxRunningSteps, 'hierarchy': 0}
     trajectoryExtension = '.pickle'
     getTrajectorySavePath = GetSavePath(trajectoryDirectory, trajectoryExtension, trajectoryFixedParameters)
 
     # Compute Statistics on the Trajectories
     loadTrajectories = LoadTrajectories(getTrajectorySavePath, loadFromPickle)
-    numWolves = 3
+    numWolves = 2
     numSheep = 4
     trajectoryParameters = {'numWolves': numWolves, 'numSheep': numSheep}
-    trajectories = loadTrajectories(trajectoryParameters) 
+    trajectories = loadTrajectories(trajectoryParameters)
     # generate demo image
     screenWidth = 600
     screenHeight = 600
@@ -64,8 +64,8 @@ def main():
     lineColor = THECOLORS['white']
     lineWidth = 4
     drawBackground = DrawBackground(screen, screenColor, xBoundary, yBoundary, lineColor, lineWidth)
-    
-    FPS = 20
+
+    FPS = 10
     circleColorSpace = [[100, 100, 100]] * numSheep + [[255, 255, 255]] * numWolves
     circleSize = 10
     positionIndex = [0, 1]
@@ -84,15 +84,15 @@ def main():
     softFunction = SoftPolicy(softParameter)
     updateColorSpaceByPosterior = lambda colorSpace, posterior : updateColorSpace(
             colorSpace, [softFunction(individualPosterior) for individualPosterior in posterior], intentionSpace, imaginedWeIdsForInferenceSubject)
-    
+
     #updateColorSpaceByPosterior = lambda originalColorSpace, posterior : originalColorSpace
     outsideCircleAgentIds = imaginedWeIdsForInferenceSubject
-    outsideCircleColor = np.array([[255, 0, 0]] * numWolves) 
-    outsideCircleSize = 15 
+    outsideCircleColor = np.array([[255, 0, 0]] * numWolves)
+    outsideCircleSize = 15
     drawCircleOutside = DrawCircleOutside(screen, outsideCircleAgentIds, positionIndex, outsideCircleColor, outsideCircleSize)
-    drawState = DrawState(FPS, screen, circleColorSpace, circleSize, agentIdsToDraw, positionIndex, 
+    drawState = DrawState(FPS, screen, circleColorSpace, circleSize, agentIdsToDraw, positionIndex,
             saveImage, saveImageDir, drawBackground, updateColorSpaceByPosterior, drawCircleOutside)
-    
+
    # MDP Env
     xBoundary = [0,600]
     yBoundary = [0,600]
@@ -100,12 +100,12 @@ def main():
     transit = TransitForNoPhysics(stayInBoundaryByReflectVelocity)
     numFramesToInterpolate = 3
     interpolateState = InterpolateState(numFramesToInterpolate, transit)
-    
+
     stateIndexInTimeStep = 0
     actionIndexInTimeStep = 1
     posteriorIndexInTimeStep = 3
     chaseTrial = ChaseTrialWithTraj(stateIndexInTimeStep, drawState, interpolateState, actionIndexInTimeStep, posteriorIndexInTimeStep)
-    
+
     print(len(trajectories))
     lens = [len(trajectory) for trajectory in trajectories]
     index = np.argsort(-np.array(lens))

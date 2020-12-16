@@ -56,7 +56,7 @@ class SampleTrjactoriesForConditions:
         posIndexInState = [0, 1]
         getPreyPos = GetAgentPosFromState(possiblePreyIds, posIndexInState)
         getPredatorPos = GetAgentPosFromState(possiblePredatorIds, posIndexInState)
-        killzoneRadius = 50
+        killzoneRadius = 5
         isTerminal = IsTerminal(killzoneRadius, getPreyPos, getPredatorPos)
 
         # MDP Policy
